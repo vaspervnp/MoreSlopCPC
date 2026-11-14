@@ -247,10 +247,12 @@ def text(sc, s, x, z, size, mat, d=1.0, y=0.0, name="text", font=None, align="CE
     return ob
 
 
-def save_blend(name="moreslop"):
+def save_blend(name="moreslop", only=None):
     """Write only the MS_ scenes (and what they use) to art/blender/<name>.blend,
-    leaving whatever else is open in Blender alone."""
+    leaving whatever else is open in Blender alone. `only`: scene names
+    without the MS_ prefix."""
     p = os.path.join(REPO, "art", "blender", name + ".blend")
-    scenes = {s for s in bpy.data.scenes if s.name.startswith("MS_")}
+    scenes = {s for s in bpy.data.scenes if s.name.startswith("MS_")
+              and (only is None or s.name[3:] in only)}
     bpy.data.libraries.write(p, scenes, fake_user=True)
     return p

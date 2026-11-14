@@ -19,7 +19,7 @@ import sprites as SP  # noqa: E402
 importlib.reload(SP)
 
 import bpy  # noqa: E402
-from mathutils import Vector  # noqa: E402
+from mathutils import Matrix, Vector  # noqa: E402
 
 
 def persp(sc, loc, look, lens=35):
@@ -138,7 +138,7 @@ def bg2():
     o = lmat(0, 15)                 # orange lines
     r = lmat(0, 3)                  # dark red lines
     y = lmat(0, 24)
-    persp(sc, (0, -40, 0), (0, 100, 0), lens=18)
+    persp(sc, (0, -6, 1), (0, 100, -3), lens=16)
     # corridor frames receding
     for i in range(10):
         d = i * 14
@@ -242,25 +242,93 @@ def bg3():
 
 
 # ----------------------------------------------------------- menu / loader
-def logo(name, w, h, aspect, size, base):
-    """MORE SLOP in chunky 3D letters with slime drips. Rendered white-ish;
-    build_assets maps its brightness onto the three rainbow pens."""
+IMPACT = r"C:\Windows\Fonts\impact.ttf"
+
+
+def _world_mesh(sc, ob):
+    """Evaluated mesh of ob as world-space (verts, polys)."""
+    dg = sc.view_layers[0].depsgraph
+    dg.update()
+    ev = ob.evaluated_get(dg)
+    me = ev.to_mesh()
+    mw = ev.matrix_world.copy()
+    verts = [mw @ v.co for v in me.vertices]
+    polys = [tuple(p.vertices) for p in me.polygons]
+    ev.to_mesh_clear()
+    return verts, polys
+
+
+def logo(name, w, h, aspect, cap, top):
+    """MORE SLOP in chunky 3D Impact letters, slime dripping off the bottom
+    edges. Cap height `cap` pixels, `top` pixels of margin above. Rendered
+    white/grey; build_assets maps its brightness onto three rainbow pens."""
+    from mathutils.bvhtree import BVHTree
     sc = B.scene(name, w, h, aspect)      # ortho: 1 unit = 1 visual pixel
     m = B.toon(26, 13, split=0.5)
     W = w * aspect
-    t = B.text(sc, "MORE SLOP", W / 2, base, size, m, d=4)
-    t.data.bevel_depth = 0.8
-    t.data.space_character = 1.05
-    t.rotation_euler = (math.radians(80), math.radians(0), math.radians(-12))
-    for i, x in enumerate((0.16, 0.27, 0.43, 0.58, 0.66, 0.81, 0.90)):
-        L = (8, 13, 6, 15, 9, 11, 5)[i]
-        B.box(sc, W * x, base - L + 2, 2.4, L, m, d=2, y=-6, name="drip")
-        B.ball(sc, W * x + 1.2, base - L + 2, 2.0, m, y=-6, name="drop")
+    font = bpy.data.fonts.load(IMPACT, check_existing=True)
+    t = B.text(sc, "MORE SLOP", W / 2, 0, 10, m, d=0.4, font=font)
+    t.data.space_word = 0.8
+    t.data.space_character = 1.12
+    v, _ = _world_mesh(sc, t)
+    xs = [p.x for p in v]
+    zs = [p.z for p in v]
+    k = cap / (max(zs) - min(zs))
+    t.data.size = 10 * k
+    # Impact is condensed and Mode 0 pixels are wide: stretch to fill the width
+    t.scale.x = min(1.9, (W - 30) / ((max(xs) - min(xs)) * k))
+    depth = 0.16 * cap
+    t.data.extrude = depth
+    t.data.bevel_depth = 0.008 * cap
+    t.data.bevel_resolution = 1
+    base = h - top - cap
+    t.location = (W / 2, 0, base)
+    v, f = _world_mesh(sc, t)
+    base = min(p.z for p in v)
+    tree = BVHTree.FromPolygons(v, f)
+
+    def solid(x, z):
+        return tree.ray_cast(Vector((x, -100, z)), Vector((0, 1, 0)))[0] is not None
+
+    # runs of letter just above the bottom edge -> where slime can hang
+    zz = base + 0.06 * cap
+    runs, x0 = [], None
+    x, x1 = min(p.x for p in v), max(p.x for p in v) + 1
+    while x <= x1:
+        if solid(x, zz):
+            if x0 is None:
+                x0 = x
+        elif x0 is not None:
+            runs.append((x0, x))
+            x0 = None
+        x += 0.5
+    lengths = (0.42, 0.0, 0.22, 0.50, 0.0, 0.30, 0.16, 0.44, 0.0, 0.26, 0.36, 0.0, 0.20)
+    thick = depth + t.data.bevel_depth
+    piv = bpy.data.objects.new(name + "_pivot", None)
+    sc.collection.objects.link(piv)
+    piv.location = (W / 2, 0, base + cap / 2)
+    parts = [t]
+    for i, (a, b) in enumerate(runs):
+        L = lengths[i % len(lengths)] * cap
+        if L <= 0 or b - a < 2:
+            continue
+        dw = min(0.6 * (b - a), 0.26 * cap)
+        cx = (a + b) / 2 + ((i % 3) - 1) * 0.15 * (b - a - dw)
+        top_z = base + 0.12 * cap
+        parts.append(B.box(sc, cx - dw / 2, base - L, dw, top_z - (base - L), m, d=2 * thick * 0.9, name="drip"))
+        r = dw * 0.72
+        parts.append(B.ball(sc, cx, base - L, r, m, sy=thick * 0.9 / r, sz=1.15, name="drop"))
+        # a little blob where the drip leaves the letter
+        parts.append(B.ball(sc, cx, base - 0.02 * cap, dw * 0.8, m, sy=thick * 0.9 / dw, sz=0.3, name="lip"))
+    for ob in parts:
+        ob.parent = piv
+        ob.matrix_parent_inverse = Matrix.Translation(piv.location).inverted()
+    piv.rotation_euler = (math.radians(4), 0, math.radians(-3))
     return sc
 
 
 def menu():
-    sc = logo("menu_logo", 160, 60, 2.0, 50, 22)
+    sc = logo("menu_logo", 160, 60, 2.0, 30, 7)
     B.render(sc, "scenes/menu_logo.png")
     # the scene under the logo: Themis zaps the SlopBot and its heap (320x60 units)
     sc = B.scene("menu_scene", 160, 60, 2.0)
@@ -277,7 +345,7 @@ def menu():
 
 
 def loader():
-    sc = logo("loader_logo", 160, 50, 2.0, 46, 18)
+    sc = logo("loader_logo", 160, 50, 2.0, 26, 5)
     B.render(sc, "scenes/loader_logo.png")
     sc = B.scene("loader_scene", 160, 150, 2.0)    # 320x150 units
     sky(sc, B.lin((0.0, 0.0, 0.10)), B.lin((0.20, 0.0, 0.40)), B.lin((0.85, 0.15, 0.25)))
@@ -300,4 +368,5 @@ def render_all():
     bg3()
     menu()
     loader()
-    return B.save_blend("scenes")
+    return B.save_blend("scenes", only=("bg1", "bg2", "bg3", "menu_logo", "menu_scene",
+                                        "loader_logo", "loader_scene"))
