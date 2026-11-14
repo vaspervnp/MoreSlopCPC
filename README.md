@@ -102,3 +102,7 @@ python3 tests/frametimes.py 2  # game-frame lengths in episode 3 (2 = on time)
 ```bash
 python3 tests/record_music.py  # AY register log -> build/music/*.wav
 ```
+
+```bash
+python3 tests/video.py         # 4-minute gameplay video (autopilot) -> build/video/moreslop.mp4
+```
