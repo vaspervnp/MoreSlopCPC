@@ -362,7 +362,12 @@ ws_m1:
     inc b
     jr ws_m1
 ws_m2:
+    ld a,(episode)
+    cp 2
     ld a,(ix+DF_MAX)
+    jr nz,ws_m2b
+    dec a                   ; Mode 0 sprites are wider: one item fewer
+ws_m2b:
     add a,b
     cp MAX_ITEMS+1
     jr c,ws_m3
@@ -404,7 +409,6 @@ ws_o2:
 ; main loop
 ; ----------------------------------------------------------------------------
 game_loop:
-    call begin_frame
     call read_input
     ld a,(state)
     cp ST_PAUSE
@@ -438,6 +442,7 @@ gl_pause:
     ld hl,msg_unpaused
     call show_msg
 gl_draw:
+    call begin_frame
     call draw_world
     call ov_step
     call hud_step
@@ -568,11 +573,11 @@ wait_ov_gone:
     ld a,(ov_on)
     or a
     ret z
+    call begin_frame
     call draw_world
     call ov_step
     call hud_step
     call end_frame
-    call begin_frame
     jr wait_ov_gone
 
 ; ---- a life was lost
@@ -832,11 +837,18 @@ si_kind:
     ld (ix+IT_YF),0
     ld (ix+IT_Y),SPAWN_Y
     call item_sprite
-    ld a,(de)
+    ex de,hl
+    ld a,(hl)               ; w + dx
+    inc hl
+    inc hl
+    add a,(hl)
     ld (ix+IT_W),a
     ld b,a
-    inc de
-    ld a,(de)
+    dec hl
+    ld a,(hl)               ; h + dy
+    inc hl
+    inc hl
+    add a,(hl)
     ld (ix+IT_H),a
     ; x = robot_x + (8 - w) / 2
     ld a,8
@@ -995,6 +1007,7 @@ ll_1:
 
 ; poof every item (no points)
 kill_all_items:
+    push ix                 ; callers may be walking the items with IX
     ld ix,items
     ld b,MAX_ITEMS
 ka_lp:
@@ -1011,6 +1024,7 @@ ka_next:
     ld de,IT_SIZE
     add ix,de
     djnz ka_lp
+    pop ix
     ret
 
 ; ----------------------------------------------------------------------------
@@ -1258,7 +1272,7 @@ ap_1:
     inc hl
     ld (hl),0               ; frame
     inc hl
-    ld (hl),3               ; timer
+    ld (hl),2               ; timer
     pop hl
     ret
 
@@ -1274,7 +1288,7 @@ upf_lp:
     inc hl
     dec (hl)
     jr nz,upf_next
-    ld (hl),3
+    ld (hl),2
     dec hl
     inc (hl)
     ld a,(hl)

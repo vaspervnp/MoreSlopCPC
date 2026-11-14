@@ -37,7 +37,9 @@ local function process(job)
     for y = 0, job.h - 1 do
       for x = 0, job.w - 1 do
         local px = 0
-        if x < src.width and y < src.height then px = src:getPixel(x, y) end
+        -- the render may be wider than the sprite: sample the nearest column
+        local sx = math.floor((x + 0.5) * src.width / job.w)
+        if sx < src.width and y < src.height then px = src:getPixel(sx, y) end
         local a = app.pixelColor.rgbaA(px)
         if a >= 128 then
           local c = nearest(pal, app.pixelColor.rgbaR(px), app.pixelColor.rgbaG(px), app.pixelColor.rgbaB(px))

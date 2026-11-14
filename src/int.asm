@@ -42,6 +42,11 @@ ih_set:
     ld a,(int_zone)
     or a
     jr z,ih_frame
+    cp 2
+    jr nz,ih_out
+    ld hl,zone2_ctr         ; line ~34: a new frame is on screen
+    inc (hl)
+ih_out:
     pop hl
     pop bc
     pop af

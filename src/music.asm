@@ -112,8 +112,30 @@ mx6:
     ld (ay_regs+7),a
     ; ---- write registers 0-10
     ld hl,ay_regs
-    ld e,0
+    ld de,ay_last
+    ld c,0
 aw_lp:
+    ld a,(de)
+    cp (hl)
+    jr z,aw_same
+    ld a,(hl)
+    ld (de),a
+    push de
+    ld e,c
+    call ay_out
+    pop de
+aw_same:
+    inc hl
+    inc de
+    inc c
+    ld a,c
+    cp 11
+    jr nz,aw_lp
+    ret
+
+; E = register, (HL) = value
+ay_out:
+    push bc
     ld b,#F4
     out (c),e
     ld bc,#F6C0
@@ -127,11 +149,7 @@ aw_lp:
     out (c),c
     ld bc,#F600
     out (c),c
-    inc hl
-    inc e
-    ld a,e
-    cp 11
-    jr nz,aw_lp
+    pop bc
     ret
 
 ; A = song index

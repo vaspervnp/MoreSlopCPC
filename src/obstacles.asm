@@ -421,11 +421,7 @@ obst_bros:
     jr nz,obr_tick
     ld a,(obst_int)
     ld (hl),a
-    ld ix,bros
-    ld a,(ix+BR_ST)
-    or a
-    jr z,obr_new
-    ld ix,bros+BR_SIZE
+    ld ix,bros              ; one bro at a time (they are big sprites)
     ld a,(ix+BR_ST)
     or a
     jr nz,obr_tick

@@ -61,10 +61,37 @@ hs_ticker:
     ld hl,tick_pos_80
 hs_2:
     ld a,(hl)
-    cp 40
-    ret nc
+    cp 200
+    jr c,hs_typing
+    ; a new message: wipe the row first, a quarter per frame
+    sub 200
+    ld b,a
+    add a,a
+    add a,a
+    add a,b
+    add a,a
+    add a,a                 ; *20 bytes
+    ld b,a
+    ld a,(hl)
+    inc a
+    cp 204
+    jr c,hs_w1
+    xor a
+hs_w1:
+    ld (hl),a
+    ld c,HUD_ROW_TICK
+    ld de,20*256+8
+    xor a
+    jp fill_rect
+hs_typing:
+    ld b,a
+    ld a,(tick_len)
+    cp b
+    ret z
+    ret c
+    ld a,b
     ld (hs_pos),a
-    add a,2
+    inc a
     ld (hl),a
     ld a,(hs_pos)
     ld c,a
@@ -72,7 +99,6 @@ hs_2:
     ld hl,tick_buf
     add hl,bc
     ld de,tick_tmp+4
-    ldi
     ldi
     ld a,(tick_col)
     ld (tick_tmp+1),a
@@ -104,15 +130,20 @@ tk_lp:
     inc hl
     inc de
     djnz tk_lp
+    ld a,40
+    ld (tick_len),a
     jr tk_done
 tk_pad:
+    ld a,40
+    sub b
+    ld (tick_len),a
     ld a,' '
 tk_pl:
     ld (de),a
     inc de
     djnz tk_pl
 tk_done:
-    xor a
+    ld a,200
     ld (tick_pos_c0),a
     ld (tick_pos_80),a
     ret
@@ -137,6 +168,13 @@ show_msg_rand:
 
 ; ----------------------------------------------------------------------------
 hud_labels:
+    xor a
+    ld hl,last_sc_c0
+    ld b,12
+hlb_clr:
+    ld (hl),a
+    inc hl
+    djnz hlb_clr
     ld hl,txt_hud_row0
     ld bc,0*256+HUD_ROW_SCORE
     call text_m1
@@ -144,13 +182,42 @@ hud_labels:
     ld bc,0*256+HUD_ROW_INFO
     jp text_m1
 
+; only the digits that differ from what this buffer shows are drawn
 hud_score:
     ld hl,score
     ld de,num_buf
     call bcd6
-    ld hl,num_buf
-    ld bc,6*256+HUD_ROW_SCORE
-    jp text_m1
+    ld a,(draw_hi)
+    cp SCR_C0
+    ld hl,last_sc_c0
+    jr z,hsc_1
+    ld hl,last_sc_80
+hsc_1:
+    ld de,num_buf+2
+    ld b,6
+hsc_lp:
+    ld a,(de)
+    cp (hl)
+    jr z,hsc_same
+    ld (hl),a
+    ld (one_ch+2),a
+    push hl
+    push de
+    push bc
+    ld a,12
+    sub b                   ; column 6..11
+    ld b,a
+    ld c,HUD_ROW_SCORE
+    ld hl,one_ch
+    call text_m1
+    pop bc
+    pop de
+    pop hl
+hsc_same:
+    inc hl
+    inc de
+    djnz hsc_lp
+    ret
 
 hud_hi:
     ld hl,hiscore

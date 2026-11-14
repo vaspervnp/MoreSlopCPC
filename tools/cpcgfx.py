@@ -143,16 +143,28 @@ def image_pens(img, pal, alpha=True):
     return pens, opq
 
 
-def sprite_bytes(img, pal, mode):
-    """Masked sprite: db w_bytes, h, then per line (mask, data) pairs."""
+def sprite_bytes(img, pal, mode, trim=True):
+    """Masked sprite: db w_bytes, h, dx_bytes, dy, then per line (mask, data)
+    pairs. Fully transparent byte columns and lines are trimmed away; dx/dy
+    say where the trimmed block sits inside the frame."""
     pens, opq = image_pens(img, pal)
     w, h = img.size
-    wb = w // (2 if mode == 0 else 4)
-    out = bytearray([wb, h])
-    for y in range(h):
+    ppb = 2 if mode == 0 else 4
+    wb = w // ppb
+    cols = [any(opq[y][x] for y in range(h) for x in range(c * ppb, c * ppb + ppb)) for c in range(wb)]
+    rows = [any(r) for r in opq]
+    if trim and any(rows):
+        c0 = cols.index(True)
+        c1 = wb - cols[::-1].index(True)
+        r0 = rows.index(True)
+        r1 = h - rows[::-1].index(True)
+    else:
+        c0, c1, r0, r1 = 0, wb, 0, h
+    out = bytearray([c1 - c0, r1 - r0, c0, r0])
+    for y in range(r0, r1):
         d = encode_row(pens[y], mode)
         m = mask_row(opq[y], mode)
-        for i in range(wb):
+        for i in range(c0, c1):
             out += bytes([m[i], d[i]])
     return bytes(out)
 

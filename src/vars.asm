@@ -12,6 +12,10 @@ int_zone:   db 0
 raster_ptr: dw rast_none
 vbl_count:  db 0
 frame_ctr:  db 0
+zone2_ctr:  db 0
+flip_zone:  db 0
+flip_z2:    db 0
+m1_built:   db #FF
 cur_cfg:    db CFG_BASE
 keymap:     defs 10,#FF
 
@@ -24,6 +28,7 @@ ch_a:       defs CH_SIZE,0
 ch_b:       defs CH_SIZE,0
 ch_c:       defs CH_SIZE,0
 ay_regs:    defs 14,0
+ay_last:    defs 14,#FF
 
 ; video
 draw_hi:    db SCR_80
@@ -35,7 +40,10 @@ dend_80:    dw dlist_80
 dlist_c0:   defs 32*4,0
 dlist_80:   defs 32*4,0
 lag_count:  db 0
+game_frames: dw 0
 rr_cnt:     db 0
+rr_x:       db 0
+rr_y:       db 0
 dm_w:       db 0
 dm_h:       db 0
 dm_src:     dw 0
@@ -74,8 +82,12 @@ hs_pos:     db 0
 tick_pos_c0: db 40
 tick_pos_80: db 40
 tick_buf:   defs 40,32
-tick_tmp:   db TX_FG,1,TX_BG,0,32,32,0
+tick_tmp:   db TX_FG,1,TX_BG,0,32,0,0
+one_ch:     db TX_FG,3,32,0
+last_sc_c0: defs 6,0
+last_sc_80: defs 6,0
 tick_col:   db 1
+tick_len:   db 0
 num_buf:    defs 10,0
 str_buf:    defs 12,0
 as_op:      defs 3,0

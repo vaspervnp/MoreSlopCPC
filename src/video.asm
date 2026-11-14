@@ -31,10 +31,27 @@ get_addr:
 ; ----------------------------------------------------------------------------
 ; frame pacing - 25 fps (two VSYNCs per frame)
 ; ----------------------------------------------------------------------------
+; Wait until the buffer we are about to draw into is no longer displayed:
+; the CRTC latches a new start address at the top of the next frame, so we
+; wait for the line-34 interrupt that follows the flip.
 begin_frame:
+    ld a,(flip_zone)
+    cp 1
+    jr nz,bf_safe
+    ; flipped in zone 1 (lines 294-33): if that was after the wrap the
+    ; next line-34 tick comes before the latch, so wait for one more
+    ld hl,zone2_ctr
+    ld a,(flip_z2)
+bf_v:
+    cp (hl)
+    jr z,bf_v
+    ld a,(hl)
+    ld (flip_z2),a
+bf_safe:
+    ld hl,zone2_ctr
+    ld a,(flip_z2)
 bf_wait:
-    ld a,(vbl_count)
-    or a
+    cp (hl)
     jr z,bf_wait
     ld a,(draw_hi)
     cp SCR_C0
@@ -69,10 +86,17 @@ ef_wait:
     ld hl,lag_count
     inc (hl)
 ef_ontime:
+    ld hl,(game_frames)
+    inc hl
+    ld (game_frames),hl
     xor a
     ld (vbl_count),a
     ld a,(draw_hi)
     call show_buffer
+    ld a,(int_zone)
+    ld (flip_zone),a
+    ld a,(zone2_ctr)
+    ld (flip_z2),a
     ld a,(draw_hi)
     xor #40
     ld (draw_hi),a
@@ -166,6 +190,10 @@ rl_do:
     inc hl
     ld c,(hl)
     inc hl
+    ld a,b
+    ld (rr_x),a
+    ld a,c
+    ld (rr_y),a
     ld a,(hl)
     inc hl
     push hl
@@ -193,6 +221,10 @@ restore_rect:
     ld (rr_dv+1),a
     pop de
     pop bc
+    ld a,b
+    ld (rr_x),a
+    ld a,c
+    ld (rr_y),a
     call rr_core
     ld a,CFG_BASE
     jp set_cfg
@@ -203,32 +235,53 @@ copy_80_c0:
     ld (draw_hi),a
     ld a,#40
     ld (rr_dv+1),a
+    ld a,b
+    ld (rr_x),a
+    ld a,c
+    ld (rr_y),a
     ; fall into rr_core
 
-; B=x C=y D=w E=h; source = destination - (rr_dv) in the high byte
+; D=w E=h, position in rr_x/rr_y; source = destination - (rr_dv) in the
+; high byte. Each row is an unrolled LDI chain entered at (end - 2*w).
 rr_core:
     ld a,d
-    ld (rr_wv+1),a
+    add a,a
+    ld c,a
+    ld b,0
+    ld hl,rr_ldi_end
+    or a
+    sbc hl,bc
+    ld (rr_call+1),hl
     ld a,e
     ld (rr_cnt),a
-    call get_addr
+    ld a,(rr_x)
+    ld b,a
+    ld a,(rr_y)
+    ld c,a
+    call get_addr           ; HL = destination
+    ex de,hl                ; DE = destination
 rr_row:
-    push hl
-    ld d,h
-    ld e,l
+    ld h,d
+    ld l,e
     ld a,h
 rr_dv:
     sub #80
-    ld h,a
-rr_wv:
-    ld bc,#0004
-    ldir
-    pop hl
-    NEXTLINE
-    ld a,(rr_cnt)
-    dec a
-    ld (rr_cnt),a
+    ld h,a                  ; HL = source
+    push de
+rr_call:
+    call rr_ldi_end
+    pop de
+    NEXTLINE_DE
+    ld hl,rr_cnt
+    dec (hl)
     jr nz,rr_row
+    ret
+
+rr_ldi:
+    repeat 80
+    ldi
+    rend
+rr_ldi_end:
     ret
 
 ; copy the whole background bank to both screens
@@ -256,6 +309,14 @@ draw_masked:
     ld a,(de)
     ld (dm_h),a
     inc de
+    ld a,(de)               ; trimmed: offset of the block in the frame
+    add a,b
+    ld b,a
+    inc de
+    ld a,(de)
+    add a,c
+    ld c,a
+    inc de
     ld (dm_src),de
     ld a,(dm_w)
     ld d,a
@@ -265,29 +326,49 @@ draw_masked:
     ret c
     call add_dirty
     call get_addr
-    ld de,(dm_src)
+    ex de,hl                ; DE = screen
+    ; jump into the unrolled loop: entry = dm_unroll_end - 7*w
+    ld a,(dm_w)
+    ld b,a
+    add a,a
+    add a,a
+    add a,a
+    sub b
+    ld c,a
+    ld b,0
+    ld hl,dm_unroll_end
+    or a
+    sbc hl,bc
+    push ix
+    push hl
+    pop ix                  ; IX = entry into the unrolled loop
+    ld hl,(dm_src)
     ld a,(dm_h)
     ld c,a
 dm_row:
-    push hl
-    ld a,(dm_w)
-    ld b,a
-dm_col:
-    ld a,(de)
-    inc de
-    and (hl)
-    ex de,hl
-    or (hl)
-    ex de,hl
-    inc de
-    ld (hl),a
-    inc hl
-    djnz dm_col
-    pop hl
-    NEXTLINE
+    push de
+    jp (ix)
+dm_back:
+    pop de
+    NEXTLINE_DE
     dec c
     jr nz,dm_row
+    pop ix
     ret
+
+; one byte = 7 bytes of code: screen AND mask OR data
+dm_unroll:
+    repeat 10
+    ld a,(de)
+    and (hl)
+    inc hl
+    or (hl)
+    inc hl
+    ld (de),a
+    inc de
+    rend
+dm_unroll_end:
+    jp dm_back
 
 ; ----------------------------------------------------------------------------
 ; opaque block with horizontal clipping (banner)
@@ -448,6 +529,16 @@ m1_build:
     push hl
     push bc
     push de
+    ld a,(txt_fg)
+    ld b,a
+    ld a,(txt_bg)
+    rlca
+    rlca
+    or b
+    ld hl,m1_built
+    cp (hl)
+    jr z,mb_done
+    ld (hl),a
     ld hl,m1_tab
     ld c,0
 mb_lp:
@@ -468,6 +559,7 @@ mb_lp:
     ld a,c
     cp 16
     jr nz,mb_lp
+mb_done:
     pop de
     pop bc
     pop hl
