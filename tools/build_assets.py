@@ -140,59 +140,167 @@ def build_palettes():
 
 # ---------------------------------------------------------- full screens
 def pens_of(img, pal):
-    """indexed image -> its indices; RGB -> nearest pens of `pal`."""
-    if img.mode == "P":
-        w, h = img.size
-        px = img.load()
-        return [[px[x, y] for x in range(w)] for y in range(h)]
-    pens, _ = G.image_pens(img.convert("RGBA"), G.pal_rgb(pal), alpha=False)
+    """picture -> rows of pens (nearest colour of `pal`)."""
+    pens, _ = G.image_pens(img.convert("RGBA"), G.pal_rgb(pal) if isinstance(pal, str) else pal,
+                           alpha=False)
     return pens
 
 
-def load_screen(name, fallback):
+def png(name):
     p = os.path.join(ART, name + ".png")
-    if os.path.exists(p):
-        img = Image.open(p)
-        if img.mode not in ("P",):
-            img = img.convert("RGB")
-        return img, True
-    return fallback(), False
+    return Image.open(p).convert("RGBA") if os.path.exists(p) else None
 
 
-def halve(rows):
-    return [r[0::2] for r in rows]
+def hud_band():
+    rows = [[0] * 320 for _ in range(32)]
+    for x in range(320):
+        rows[17][x] = 2
+        rows[18][x] = 3
+        rows[19][x] = 2
+        if x % 4 != 3:
+            rows[21][x] = 1
+    return rows
 
 
 def build_background(ep):
-    """320x200 picture: lines 0-31 HUD (Mode 1), 32-39 blank, 40-189 the
-    playfield (Mode 1, or Mode 0 for episode 3), 190-199 shelf."""
-    img, real = load_screen("bg%d" % ep, lambda: P.background(ep))
-    assert img.size in ((320, 200), (160, 200)), img.size
-    if img.mode == "P" and img.size == (160, 200):
-        rows = pens_of(img, "ep3")
-        full = [[p for p in r for _ in (0, 1)] for r in rows]
-    else:
-        full = None
-    rgb = img.convert("RGB")
-    if rgb.size == (160, 200):
-        rgb = rgb.resize((320, 200), Image.NEAREST)
-    hud = pens_of(rgb.crop((0, 0, 320, 32)), "hud%d" % ep)
+    """lines 0-31 HUD (Mode 1), 32-39 blank, 40-189 playfield (Mode 1, or
+    Mode 0 for episode 3), 190-199 shelf."""
+    pf = png("bg%d_pf" % ep)
+    real = pf is not None
     blank = [[0] * 320 for _ in range(8)]
+    if not real:
+        ph = P.background(ep)
+        pf = ph.crop((0, 40, 320, 190))
     if ep == 3:
-        if full is not None:
-            pf = halve([r for r in full[40:190]])
-        else:
-            pf = pens_of(rgb.crop((0, 40, 320, 190)).resize((160, 150), Image.NEAREST), "ep3")
-        shelf = pens_of(rgb.crop((0, 190, 320, 200)).resize((160, 10), Image.NEAREST), "ep3")
-        bands = [(0, 32, 1, hud), (32, 40, 1, blank), (40, 190, 0, pf), (190, 200, 0, shelf)]
+        if pf.width == 320:
+            pf = pf.resize((160, 150), Image.NEAREST)
+        pfp = pens_of(pf, "ep3")
+        sh = png("shelf_m0") or Image.new("RGB", (160, 10))
+        shp = pens_of(sh, "ep3")
+        bands = [(0, 32, 1, hud_band()), (32, 40, 1, blank), (40, 190, 0, pfp), (190, 200, 0, shp)]
     else:
-        pf = pens_of(rgb.crop((0, 40, 320, 190)), "ep%d" % ep)
-        shelf = pens_of(rgb.crop((0, 190, 320, 200)), "shelf%d" % ep)
-        bands = [(0, 32, 1, hud), (32, 40, 1, blank), (40, 190, 1, pf), (190, 200, 1, shelf)]
+        pfp = pens_of(pf, "ep%d" % ep)
+        sh = png("shelf_m1") or Image.new("RGB", (320, 10))
+        shp = pens_of(sh, "shelf1")
+        bands = [(0, 32, 1, hud_band()), (32, 40, 1, blank), (40, 190, 1, pfp), (190, 200, 1, shp)]
     scr = G.screen_from_bands(bands)
     write("BG%d" % ep, scr, binary=True)
     preview(bands, "bg%d_preview.png" % ep, ep)
     return real
+
+
+def logo_pens(img, pens, bgpen=0):
+    """RGBA logo render -> rows of pens by brightness (dark, mid, light)."""
+    w, h = img.size
+    px = img.load()
+    rows = []
+    for y in range(h):
+        r = []
+        for x in range(w):
+            R, Gg, Bb, A = px[x, y]
+            if A < 128:
+                r.append(None)
+                continue
+            l = (R * 3 + Gg * 6 + Bb) / 10
+            r.append(pens[2] if l > 200 else pens[1] if l > 110 else pens[0])
+        rows.append(r)
+    # dark outline around the letters
+    out = [list(r) for r in rows]
+    for y in range(h):
+        for x in range(w):
+            if rows[y][x] is None:
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h and rows[ny][nx] is not None:
+                        out[y][x] = -1
+                        break
+    return out
+
+
+def stars(w, h, pen, seed, n):
+    import random
+    rnd = random.Random(seed)
+    rows = [[0] * w for _ in range(h)]
+    for _ in range(n):
+        rows[rnd.randrange(h)][rnd.randrange(w)] = pen
+    return rows
+
+
+def overlay(base, top, outline_pen):
+    for y, r in enumerate(top):
+        for x, p in enumerate(r):
+            if p is None:
+                continue
+            base[y][x] = outline_pen if p == -1 else p
+
+
+def rom_font():
+    rom = open(os.path.expanduser("~/cpcemu/roms/cpc6128_os.bin"), "rb").read()
+    return rom[0x3800:0x4000]
+
+
+def m0_text(rows, x, y, s, pen):
+    """Draw with the CPC ROM font onto 160-wide pen rows (8x8 per char)."""
+    f = rom_font()
+    for i, ch in enumerate(s):
+        g = f[ord(ch) * 8:ord(ch) * 8 + 8]
+        for r in range(8):
+            for b in range(8):
+                if g[r] & (0x80 >> b) and 0 <= x + i * 8 + b < 160:
+                    rows[y + r][x + i * 8 + b] = pen
+
+
+def menu_screen():
+    rows = [[0] * 160 for _ in range(200)]
+    sky = stars(160, 60, 13, 7, 40)
+    for y in range(60):
+        rows[y] = sky[y]
+    lg = png("menu_logo")
+    if lg:
+        lg = lg.resize((160, 60), Image.NEAREST) if lg.width != 160 else lg
+        top = logo_pens(lg, (1, 2, 3))
+        for y in range(60):
+            for x in range(160):
+                p = top[y][x]
+                if p is not None:
+                    rows[y][x] = 4 if p == -1 else p
+    sc = png("menu_scene")
+    if sc:
+        sp = pens_of(sc, "menu")
+        for y in range(60):
+            rows[60 + y] = sp[y]
+    # the panel frame
+    for x in range(4, 156):
+        for y in (116, 187):
+            rows[y][x] = 7
+        for y in (117, 186):
+            rows[y][x] = 10
+    for y in range(116, 188):
+        for x in (4, 155):
+            rows[y][x] = 7
+        for x in (5, 154):
+            rows[y][x] = 10
+    return rows, (lg is not None and sc is not None)
+
+
+def loader_screen():
+    rows = [[0] * 160 for _ in range(200)]
+    sk = stars(160, 50, 14, 3, 30)
+    for y in range(50):
+        rows[y] = sk[y]
+    sc = png("loader_scene")
+    if sc:
+        sp = pens_of(sc, "loader")
+        for y in range(150):
+            rows[50 + y] = sp[y]
+    lg = png("loader_logo")
+    if lg:
+        top = logo_pens(lg, (6, 7, 8))
+        overlay(rows, top, 0)
+    for y in range(186, 200):
+        rows[y] = [0] * 160
+    m0_text(rows, 16, 189, "LOADING SLOP", 10)
+    return rows, (sc is not None and lg is not None)
 
 
 def preview(bands, name, ep):
@@ -221,19 +329,11 @@ def preview(bands, name, ep):
     img.resize((640, 400), Image.NEAREST).save(os.path.join(BUILD, name))
 
 
-def build_fullscreen_m0(name, pal, fallback):
-    img, real = load_screen(name, fallback)
-    if img.size == (320, 200):
-        img = img.resize((160, 200), Image.NEAREST)
-    assert img.size == (160, 200), (name, img.size)
-    rows = pens_of(img, pal)
-    bands = [(0, 200, 0, rows)]
-    preview(bands, name + "_preview.png", pal)
-    return G.screen_from_bands(bands), real
-
-
 def build_menu_and_c7():
-    scr, real = build_fullscreen_m0("menu", "menu", P.menu)
+    rows, real = menu_screen()
+    bands = [(0, 200, 0, rows)]
+    preview(bands, "menu_preview.png", "menu")
+    scr = G.screen_from_bands(bands)
     packed = G.lz_pack(scr)
     assert G.lz_unpack(packed) == scr
     assert len(packed) <= 0x4000, len(packed)
@@ -243,8 +343,10 @@ def build_menu_and_c7():
 
 
 def build_loader():
-    scr, real = build_fullscreen_m0("loader", "loader", P.loader)
-    write("SLOPSCR", scr, binary=True)
+    rows, real = loader_screen()
+    bands = [(0, 200, 0, rows)]
+    preview(bands, "loader_preview.png", "loader")
+    write("SLOPSCR", G.screen_from_bands(bands), binary=True)
     inks = ",".join(str(c) for c in G.PAL["loader"])
     bas = [
         "10 MODE 0:BORDER 0:FOR i=0 TO 15:READ c:INK i,c:NEXT",

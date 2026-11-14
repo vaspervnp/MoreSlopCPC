@@ -55,7 +55,7 @@
 - [x] **Milestone 2: Ανάπτυξη Core Game Engine** *(Z80/rasm: 25 fps double buffer, ήχος AY στο interrupt, raster splits)*
   * Υλοποίηση του βρόχου παιχνιδιού (Game Loop), χειρισμού (keyboard & touch), και συστήματος σύγκρουσης (collision detection).
   * Ενσωμάτωση Web Audio API για retro 8-bit sound effects (beeps, zaps, explosions).
-- [ ] **Milestone 3: Εφαρμογή των 3 Σεναρίων**
+- [x] **Milestone 3: Εφαρμογή των 3 Σεναρίων** *(sprites & σκηνικά: Blender → Aseprite)*
   * Προγραμματισμός των διαφορετικών palettes (Mode 1, Amber, Mode 0).
   * Ενσωμάτωση των ειδικών εμποδίων (pop-ups, banners, crypto-bros).
 - [ ] **Milestone 4: Δοκιμές & CPC ROM Export**
