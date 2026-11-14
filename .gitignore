@@ -1,0 +1,4 @@
+build/
+*:Zone.Identifier
+__pycache__/
+*.blend1
