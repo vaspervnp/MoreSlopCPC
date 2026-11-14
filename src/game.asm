@@ -22,6 +22,11 @@ DF_OBST     equ 8   ; frames between obstacles
 DF_COOL     equ 9   ; zap cooldown
 DF_SIZE     equ 10
 
+REV_TIME    equ 125     ; frames of reversed controls after zapping a deepfake
+BEAT_EVERY  equ 250     ; frames between bass drops
+DROP_TIME   equ 50      ; frames a bass drop lasts
+BOSS_HP     equ 12      ; zaps to bring down the SlopBot
+
 ; ----------------------------------------------------------------------------
 ; input -> inp / inp_new
 ; ----------------------------------------------------------------------------
@@ -195,40 +200,7 @@ gs_seed:
 
 ; set up the current episode and show its intro card
 episode_start:
-    ld a,(episode)
-    ld l,a
-    ld h,0
-    add hl,hl
-    add hl,hl
-    add hl,hl               ; *8
-    ld de,ep_tab
-    add hl,de
-    ld a,(hl)               ; bank
-    ld (bg_cfg),a
-    inc hl
-    ld a,(hl)
-    ld (cur_mode),a
-    inc hl
-    ld e,(hl)
-    inc hl
-    ld d,(hl)
-    inc hl
-    ld (ep_raster),de
-    ld e,(hl)
-    inc hl
-    ld d,(hl)
-    inc hl
-    ld (cur_set),de
-    ld e,(hl)
-    inc hl
-    ld d,(hl)
-    ld (ep_card),de
-    ; blank the screen while it changes
-    ld hl,rast_black
-    ld (raster_ptr),hl
-    call wait_vbl
-    call wait_vbl
-    call bg_to_screens
+    call ep_load
     call clear_dirty
     call reset_objects
     ld hl,(ep_raster)
@@ -236,8 +208,7 @@ episode_start:
     call ep_colours
     ld a,HF_ALL
     call hud_mark
-    ld a,(episode)
-    inc a                   ; SNG_EP1..3 = 1..3
+    ld a,SNG_EP
     call play_song
     ld hl,(ep_card)
     call ov_open
@@ -299,17 +270,23 @@ reset_objects:
     ld (popup_on),a
     ld a,40
     ld (spawn_timer),a
+    ld a,BEAT_EVERY
+    ld (beat_timer),a
     ret
 
 ; compute the wave parameters from difficulty, episode, wave and loop
 wave_setup:
-    ; level = loop*9 + episode*3 + wave
+    xor a
+    ld (boss_on),a
+    ; level = loop*30 + episode*3 + wave
     ld a,(loop_n)
-    ld b,a
+    add a,a
+    ld b,a                  ; 2*loop
     add a,a
     add a,a
     add a,a
-    add a,b
+    add a,a                 ; 32*loop
+    sub b
     ld b,a
     ld a,(episode)
     ld c,a
@@ -340,9 +317,8 @@ ws_f2:
     ld hl,#0400
 ws_f3:
     ld (fall_spd),hl
-    ; spawn interval = base - 2*level (min 9)
+    ; spawn interval = base - level (min 9)
     ld a,(level)
-    add a,a
     ld b,a
     ld a,(ix+DF_SPAWN)
     sub b
@@ -353,17 +329,17 @@ ws_s1:
     ld a,9
 ws_s2:
     ld (spawn_int),a
-    ; max items = base + level/3 (max 8)
+    ; max items = base + level/5 (max 8)
     ld a,(level)
     ld b,0
 ws_m1:
-    sub 3
+    sub 5
     jr c,ws_m2
     inc b
     jr ws_m1
 ws_m2:
-    ld a,(episode)
-    cp 2
+    ld a,(cur_mode)
+    or a
     ld a,(ix+DF_MAX)
     jr nz,ws_m2b
     dec a                   ; Mode 0 sprites are wider: one item fewer
@@ -383,12 +359,11 @@ ws_m3:
     add a,a
     add a,(ix+DF_QUOTA)
     ld (quota_left),a
-    ; obstacles = base - 6*level (min 60)
+    ; obstacles = base - 3*level (min 60)
     ld a,(level)
     ld b,a
     add a,a
     add a,b
-    add a,a
     ld b,a
     ld a,(ix+DF_OBST)
     sub b
@@ -523,7 +498,7 @@ do_play:
     call update_bolts
     call update_poofs
     call update_obstacles
-    ret
+    jp beat_step
 
 ; ---- wave cleared: card, then the next wave / episode
 do_clear:
@@ -541,8 +516,7 @@ do_clear:
     jr z,sc_ep
     ld (wave),a
     call wave_setup
-    ld a,(episode)
-    inc a
+    ld a,SNG_EP
     call play_song
     ld a,ST_INTRO
     ld (state),a
@@ -554,7 +528,7 @@ sc_ep:
     ld (wave),a
     ld a,(episode)
     inc a
-    cp 3
+    cp NUM_EPS
     jr z,sc_win
     ld (episode),a
     call wait_ov_gone
@@ -592,8 +566,7 @@ do_lost:
     jr z,sl_over
     ld a,ST_PLAY
     ld (state),a
-    ld a,(episode)
-    inc a
+    ld a,SNG_EP
     jp play_song
 sl_over:
     ld a,ST_OVER
@@ -651,6 +624,24 @@ ov_wait_free:
 ; player
 ; ----------------------------------------------------------------------------
 update_player:
+    ; the deepfake swapped left and right?
+    ld hl,player_rev
+    ld a,(hl)
+    or a
+    ld a,(inp)
+    jr z,up_norev
+    dec (hl)
+    ld c,a
+    and #FC
+    bit 0,c
+    jr z,up_rv1
+    or IN_RIGHT
+up_rv1:
+    bit 1,c
+    jr z,up_norev
+    or IN_LEFT
+up_norev:
+    ld (pinp),a
     ld hl,player_cool
     ld a,(hl)
     or a
@@ -680,7 +671,7 @@ up_fast:
     jr c,up_move
     ld c,2
 up_move:
-    ld a,(inp)
+    ld a,(pinp)
     and IN_LEFT
     jr z,up_r
     ld a,(player_x)
@@ -693,7 +684,7 @@ up_l1:
     ld (player_dir),a
     jr up_held
 up_r:
-    ld a,(inp)
+    ld a,(pinp)
     and IN_RIGHT
     jr z,up_still
     ld a,(player_x)
@@ -755,10 +746,23 @@ uf_free:
 update_robot:
     ld a,(robot_print)
     or a
-    jr z,ur_1
+    jr z,ur_0
     dec a
     ld (robot_print),a
-ur_1:
+ur_0:
+    ld hl,robot_flash
+    ld a,(hl)
+    or a
+    jr z,ur_0b
+    dec (hl)
+ur_0b:
+    ld a,(boss_on)
+    or a
+    call nz,robot_step
+    call robot_step
+    jr ur_2
+
+robot_step:
     ld a,(robot_x)
     ld hl,robot_dx
     add a,(hl)
@@ -769,11 +773,12 @@ ur_1:
     jr nc,ur_flip
     call rand
     cp 5
-    jr nc,ur_2
+    ret nc
 ur_flip:
     ld a,(hl)
     neg
     ld (hl),a
+    ret
 ur_2:
     ld a,(state)
     cp ST_PLAY
@@ -827,12 +832,21 @@ si_next:
     cp 8
     ld c,4
     jr c,si_kind
+    ld a,(ep_mech)
+    and MC_DECOY_REV|MC_DECOY_MISS
+    jr z,si_slop
+    call rand
+    cp 40
+    ld c,K_DECOY
+    jr c,si_kind
+si_slop:
     ld b,3
     call rand_mod
     ld c,a
 si_kind:
     ld (ix+IT_KIND),c
     ld (ix+IT_ON),1
+    ld (ix+IT_ANIM),0
     ld (ix+IT_T),0
     ld (ix+IT_YF),0
     ld (ix+IT_Y),SPAWN_Y
@@ -869,6 +883,8 @@ si_kind:
 ; IX = item -> DE = current sprite
 item_sprite:
     ld a,(ix+IT_KIND)
+    cp K_DECOY
+    jr z,is_decoy
     cp 3
     jr c,is_slop
     sub 3
@@ -885,6 +901,13 @@ is_slop:
     rrca
     add a,b
     add a,SS_ITEMS
+    jp spr_get
+is_decoy:
+    ld a,(ix+IT_T)
+    and 8
+    rrca
+    rrca
+    add a,SS_DECOY
     jp spr_get
 
 ; ----------------------------------------------------------------------------
@@ -920,8 +943,15 @@ item_tick:
 it_1:
     cp 3
     jr c,it_move
+    cp K_DECOY
+    jr z,it_move
     ld hl,#00C0             ; power-ups drift down slowly
 it_move:
+    ld a,(drop_timer)
+    or a
+    jr z,it_mv2
+    add hl,hl               ; the bass dropped
+it_mv2:
     ld a,(ix+IT_YF)
     add a,l
     ld (ix+IT_YF),a
@@ -957,7 +987,14 @@ it_land:
     ld (ix+IT_ON),0
     ld a,(ix+IT_KIND)
     cp 3
-    ret nc                  ; power-ups just fall away
+    ret nc                  ; power-ups and decoys just fall away
+    call add_miss
+    ret c                   ; that cost a life (and said so)
+    ld a,EH_MISS
+    jp ep_msg
+
+; one more slop on the shelf -> carry if that cost a life
+add_miss:
     ld a,SFX_SOLD
     call play_sfx
     xor a
@@ -973,13 +1010,16 @@ it_land:
     ld a,(misses)
     ld hl,miss_limit
     cp (hl)
-    jr nc,life_lost
-    ld hl,msgs_miss
-    jp show_msg_rand
+    ccf
+    ret nc
+    call life_lost
+    scf
+    ret
 
 life_lost:
     xor a
     ld (misses),a
+    ld (drop_timer),a
     ld hl,lives
     dec (hl)
     ld a,HF_LIVES|HF_SHELF
@@ -1066,6 +1106,10 @@ bolt_hits:
     ; obstacles first: they absorb the zap
     call bolt_vs_obstacles
     ret c
+    ld a,(boss_on)
+    or a
+    call nz,bolt_vs_boss
+    ret c
     ld ix,items
     ld e,MAX_ITEMS
 bh_lp:
@@ -1119,6 +1163,8 @@ zap_item:
     ld c,(ix+IT_Y)
     call add_poof
     ld a,(ix+IT_KIND)
+    cp K_DECOY
+    jp z,zi_decoy
     cp 3
     jr z,zi_coffee
     jp nc,zi_heart
@@ -1153,9 +1199,14 @@ zi_q:
     call rand
     cp 70
     jr nc,zi_q2
-    ld hl,msgs_kill
-    call show_msg_rand
+    ld a,EH_KILL
+    call ep_msg
 zi_q2:
+    ld a,(boss_on)
+    or a
+    ret nz                  ; while the boss fights, only hits on it count
+    call try_split
+    ret c
     ld hl,quota_left
     dec (hl)
     ld a,HF_INFO
@@ -1163,7 +1214,7 @@ zi_q2:
     ld a,(quota_left)
     or a
     ret nz
-    jp wave_clear
+    jp quota_done
 
 zi_coffee:
     ld a,SFX_POWER
@@ -1187,6 +1238,9 @@ zc_lp:
     call add_poof
     ld a,#10
     call add_score
+    ld a,(boss_on)
+    or a
+    jr nz,zc_next
     ld hl,quota_left
     ld a,(hl)
     or a
@@ -1199,10 +1253,13 @@ zc_next:
     djnz zc_lp
     ld a,HF_INFO
     call hud_mark
+    ld a,(boss_on)
+    or a
+    ret nz
     ld a,(quota_left)
     or a
     ret nz
-    jp wave_clear
+    jp quota_done
 
 zi_heart:
     ld a,SFX_POWER
@@ -1218,11 +1275,196 @@ zh_1:
     ld hl,msg_heart
     jp show_msg
 
+; ---- the zapped thing was a decoy: a deepfake of Themis or a real human
+zi_decoy:
+    ld a,SFX_THUD
+    call play_sfx
+    xor a
+    ld (streak),a
+    inc a
+    ld (mult),a
+    ld a,(ep_mech)
+    and MC_DECOY_MISS
+    jr z,zd_rev
+    call add_miss           ; zapping a human counts as slop on the shelf
+    ret c
+    ld a,EH_DECOY
+    jp ep_msg
+zd_rev:
+    ld a,REV_TIME
+    ld (player_rev),a
+    ld a,EH_DECOY
+    jp ep_msg
+
+; ---- IX = slop just zapped: maybe it splits in two -> carry (doesn't count)
+try_split:
+    ld a,(ep_mech)
+    and MC_SPLIT
+    ret z
+    bit 0,(ix+IT_ANIM)
+    ret nz                  ; the halves don't split again (carry is clear)
+    call rand
+    cp 128
+    ccf
+    ret nc
+    ; a free slot besides this one
+    ld (ix+IT_ON),1
+    ld iy,items
+    ld b,MAX_ITEMS
+ts_lp:
+    ld a,(iy+IT_ON)
+    or a
+    jr z,ts_free
+    ld de,IT_SIZE
+    add iy,de
+    djnz ts_lp
+    ld (ix+IT_ON),0
+    or a
+    ret
+ts_free:
+    ld a,(ix+IT_KIND)
+    ld (iy+IT_KIND),a
+    ld a,(ix+IT_W)
+    ld (iy+IT_W),a
+    ld a,(ix+IT_H)
+    ld (iy+IT_H),a
+    ld a,(ix+IT_Y)
+    ld (iy+IT_Y),a
+    ld a,(ix+IT_YF)
+    ld (iy+IT_YF),a
+    ld (iy+IT_ON),1
+    ld (iy+IT_ANIM),1
+    ld (ix+IT_ANIM),1
+    ld (iy+IT_T),4
+    ld (ix+IT_T),0
+    ld (iy+IT_DX),1
+    ld (ix+IT_DX),-1
+    ; spread them apart: left half x-3 (min 0), right half x+3 (fits)
+    ld a,(ix+IT_X)
+    ld c,a
+    sub 3
+    jr nc,ts_l
+    xor a
+ts_l:
+    ld (ix+IT_X),a
+    ld a,c
+    add a,3
+    ld c,a
+    add a,(iy+IT_W)
+    cp 81
+    jr c,ts_r
+    ld a,80
+    sub (iy+IT_W)
+    ld c,a
+ts_r:
+    ld (iy+IT_X),c
+    ld a,SFX_POP
+    call play_sfx
+    ld a,EH_SPECIAL
+    call ep_msg
+    scf
+    ret
+
+; ---- the quota is done: the wave is cleared, or the boss wakes up
+quota_done:
+    ld a,(ep_mech)
+    and MC_BOSS
+    jp z,wave_clear
+    ld a,(wave)
+    cp 2
+    jp nz,wave_clear
+    ld a,1
+    ld (boss_on),a
+    ld a,BOSS_HP
+    ld (quota_left),a
+    ld a,HF_INFO
+    call hud_mark
+    ld a,SFX_POPUP
+    call play_sfx
+    ld a,EH_SPECIAL
+    jp ep_msg
+
+; B = bolt x, C = bolt y -> carry if the bolt hit the SlopBot
+bolt_vs_boss:
+    ld a,c
+    cp ROBOT_Y+20
+    jr nc,bvs_no
+    ld a,(robot_x)
+    ld d,a
+    ld a,b
+    add a,BOLT_W
+    sub d
+    jr c,bvs_no
+    jr z,bvs_no
+    cp 8+BOLT_W
+    jr nc,bvs_no
+    call bolt_kill
+    ld a,SFX_THUD
+    call play_sfx
+    ld a,8
+    ld (robot_flash),a
+    ld a,#50
+    call add_score
+    ld hl,quota_left
+    dec (hl)
+    ld a,HF_INFO
+    call hud_mark
+    ld a,(quota_left)
+    or a
+    jr nz,bvs_hit
+    ; down it goes
+    xor a
+    ld (boss_on),a
+    ld a,(robot_x)
+    ld b,a
+    ld c,ROBOT_Y
+    call add_poof
+    ld a,(robot_x)
+    add a,4
+    ld b,a
+    ld c,ROBOT_Y+8
+    call add_poof
+    call wave_clear
+    ld a,EH_BOSS
+    call ep_msg
+bvs_hit:
+    scf
+    ret
+bvs_no:
+    or a
+    ret
+
+; ---- every so often the bass drops (episode mechanic)
+beat_step:
+    ld a,(ep_mech)
+    and MC_BEAT
+    ret z
+    ld hl,drop_timer
+    ld a,(hl)
+    or a
+    jr z,bs_wait
+    dec (hl)
+    ret
+bs_wait:
+    ld hl,beat_timer
+    dec (hl)
+    ret nz
+    ld (hl),BEAT_EVERY
+    ld a,DROP_TIME
+    ld (drop_timer),a
+    ld a,SFX_POWER
+    call play_sfx
+    ld a,EH_SPECIAL
+    jp ep_msg
+
 wave_clear:
     call kill_all_items
     xor a
     ld (popup_on),a
     ld (ban_on),a
+    ld (drop_timer),a
+    ld (player_rev),a
+    ld (boss_on),a
     call ov_wait_free
     ; bonus: 100 per wave number
     ld a,(wave)
@@ -1315,7 +1557,10 @@ upf_skip:
 ; drawing
 ; ----------------------------------------------------------------------------
 draw_world:
-    ; robot
+    ; robot (blinks when the boss is hit)
+    ld a,(robot_flash)
+    and 2
+    jr nz,dw_items
     ld a,(robot_print)
     or a
     ld a,SS_ROBOT
@@ -1327,7 +1572,7 @@ dw_r1:
     ld b,a
     ld c,ROBOT_Y
     call draw_masked
-    ; items
+dw_items:
     ld ix,items
     ld b,MAX_ITEMS
 dw_it:
@@ -1403,7 +1648,8 @@ dw_pn:
     ld a,SS_PLAYER+6
     jr nz,dw_pl
     ld a,(player_slow)
-    or a
+    ld hl,player_rev
+    or (hl)
     jr z,dw_p2
     ld a,(frame_ctr)
     and 8
@@ -1451,7 +1697,16 @@ fs_set:
     ld (de),a
     ret
 fs_shelf:
+    ld a,(drop_timer)
+    or a
+    jr z,fs_p0
+    ld a,(frame_ctr)
+    and 4
+    ld a,#4D                ; bright magenta strobe
+    jr nz,fs_p1
+fs_p0:
     ld a,(ep_pen0)
+fs_p1:
     ld (de),a
     ; shelf zone (entry 5)
     ld hl,(ep_raster)

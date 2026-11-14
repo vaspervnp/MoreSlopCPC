@@ -3,6 +3,8 @@
 Everything that turns pictures into bytes for the Z80 goes through here, so
 the encoders are written once and checked once (see selftest()).
 """
+import os
+
 from PIL import Image
 
 # --- the 27 CPC colours ---------------------------------------------------
@@ -43,13 +45,34 @@ PAL = {
     "ep2": [0, 15, 3, 24],
     # Episode 3 - Mode 0, sixteen loud colours (pens 0-3 match the Mode 1 roles)
     "ep3": [0, 20, 8, 26, 1, 5, 3, 15, 24, 16, 18, 9, 11, 13, 6, 7],
+    # Mode 1 episodes keep the roles: pen 0 background, 1 main, 2 second, 3 highlight
+    "ep4": [4, 18, 16, 26],     # deepfake studio: purple, green screen, pink, white
+    "ep5": [0, 21, 9, 25],      # SEO farm: terminal lime and green
+    "ep7": [1, 26, 11, 24],     # thought leaders: corporate blue, white, sky, gold
+    "ep10": [0, 20, 6, 26],     # singularity: server cyan and red alert
+    # Mode 0 episodes keep pens 0,3,6-10,12-14 (Themis, the robot, effects) and
+    # repaint 1, 2, 4, 5, 11, 15
+    "ep6": [0, 23, 17, 26, 14, 22, 3, 15, 24, 16, 18, 25, 11, 13, 6, 10],   # pastel helpline
+    "ep8": [0, 23, 17, 26, 12, 25, 3, 15, 24, 16, 18, 9, 11, 13, 6, 4],     # kitchen
+    "ep9": [0, 20, 8, 26, 4, 2, 3, 15, 24, 16, 18, 21, 11, 13, 6, 7],       # neon festival
     # HUD (Mode 1) - one per episode
     "hud1": [0, 24, 8, 26],
     "hud2": [0, 24, 15, 26],
     "hud3": [0, 24, 18, 26],
+    "hud4": [0, 24, 16, 26],
+    "hud5": [0, 24, 21, 26],
+    "hud6": [0, 24, 23, 26],
+    "hud7": [0, 24, 11, 26],
+    "hud8": [0, 24, 15, 26],
+    "hud9": [0, 24, 8, 26],
+    "hud10": [0, 24, 6, 26],
     # shelf strip at the bottom of Mode 1 episodes (pen 0 = playfield pen 0)
     "shelf1": [1, 3, 15, 24],
     "shelf2": [0, 3, 15, 24],
+    "shelf4": [4, 3, 15, 24],
+    "shelf5": [0, 3, 15, 24],
+    "shelf7": [1, 3, 15, 24],
+    "shelf10": [0, 3, 15, 24],
     # menu (Mode 0); pens 1-3 cycle through the rainbow for the logo
     "menu": [0, 6, 15, 24, 1, 2, 5, 8, 7, 18, 20, 11, 16, 13, 26, 3],
     # loading screen (Mode 0), set by the BASIC loader with INK
@@ -282,3 +305,113 @@ def selftest():
 
 if __name__ == "__main__":
     selftest()
+
+
+# --- LZ2: denser packer with an optimal parse (format decoded by lz2_unpack)
+#  0xxxxxxx          x+1 literal bytes follow
+#  10llllll o        copy l+2 bytes (2..65) from dst-(o+1)          (o: 1 byte)
+#  11llllll oo oo    copy l+3 bytes (3..65) from dst-offset          (l < 63)
+#  11111111 oo oo e  copy e+66 bytes (66..321) from dst-offset; offset 0 = end
+def _lz2_pack(data):
+    data = bytes(data)
+    n = len(data)
+    INF = 1 << 30
+    chains = {}
+    best = [(0, 0, 0, 0)] * n
+    for i in range(n - 1):
+        key = data[i:i + 2]
+        bs = bo = bl = ol = 0
+        lim = min(321, n - i)
+        for p in reversed(chains.get(key, [])[-256:]):
+            off = i - p
+            m = 2
+            while m < lim and data[p + m] == data[i + m]:
+                m += 1
+            if off <= 256 and m > bs:
+                bs, bo = min(m, 65), off
+            if m > bl:
+                bl, ol = m, off
+                if m == lim:
+                    break
+        best[i] = (bs, bo, bl, ol)
+        chains.setdefault(key, []).append(i)
+    cost = [INF] * (n + 1)
+    cost[n] = 0
+    choice = [None] * (n + 1)
+    for i in range(n - 1, -1, -1):
+        c, ch = INF, None
+        for k in range(1, min(128, n - i) + 1):
+            v = 1 + k + cost[i + k]
+            if v < c:
+                c, ch = v, (0, k, 0)
+        bs, bo, bl, ol = best[i]
+        for L in range(2, bs + 1):
+            v = 2 + cost[i + L]
+            if v < c:
+                c, ch = v, (1, L, bo)
+        for L in range(3, bl + 1):
+            v = (3 if L <= 65 else 4) + cost[i + L]
+            if v < c:
+                c, ch = v, (2, L, ol)
+        cost[i], choice[i] = c, ch
+    out = bytearray()
+    i = 0
+    while i < n:
+        t, L, o = choice[i]
+        if t == 0:
+            out.append(L - 1)
+            out += data[i:i + L]
+        elif t == 1:
+            out += bytes([0x80 | (L - 2), o - 1])
+        elif L <= 65:
+            out += bytes([0xC0 | (L - 3), o & 255, o >> 8])
+        else:
+            out += bytes([0xFF, o & 255, o >> 8, L - 66])
+        i += L
+    out += bytes([0xFF, 0, 0])
+    return bytes(out)
+
+
+def lz2_unpack(src):
+    out = bytearray()
+    i = 0
+    while True:
+        t = src[i]
+        i += 1
+        if t < 0x80:
+            out += src[i:i + t + 1]
+            i += t + 1
+            continue
+        if t < 0xC0:
+            L, o = (t & 63) + 2, src[i] + 1
+            i += 1
+        else:
+            o = src[i] | (src[i + 1] << 8)
+            i += 2
+            if t == 0xFF:
+                if o == 0:
+                    return bytes(out)
+                L = src[i] + 66
+                i += 1
+            else:
+                L = (t & 63) + 3
+        for _ in range(L):
+            out.append(out[-o])
+
+
+def lz2_pack(data, cache_dir=None):
+    """Packed bytes, cached by content (the optimal parse is slow)."""
+    import hashlib
+    data = bytes(data)
+    if cache_dir:
+        os.makedirs(cache_dir, exist_ok=True)
+        p = os.path.join(cache_dir, hashlib.sha1(data).hexdigest() + ".lz2")
+        if os.path.exists(p):
+            with open(p, "rb") as f:
+                return f.read()
+    out = _lz2_pack(data)
+    assert lz2_unpack(out) == data
+    if cache_dir:
+        with open(p, "wb") as f:
+            f.write(out)
+    return out

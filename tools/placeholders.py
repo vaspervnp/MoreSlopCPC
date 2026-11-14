@@ -19,8 +19,9 @@ SIZES = {
 }
 
 
-def make(name):
-    pal, fw, fh, n = SIZES[name]
+def make(name, pal=None, fw=None, fh=None, n=None):
+    if pal is None:
+        pal, fw, fh, n = SIZES[name]
     rgb = G.pal_rgb(pal)
     img = Image.new("RGBA", (fw * n, fh), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -43,24 +44,23 @@ def make(name):
     return img
 
 
-def background(ep):
-    img = Image.new("RGB", (320, 200))
-    d = ImageDraw.Draw(img)
-    if ep == 3:
-        p = G.pal_rgb("ep3")
-        for y in range(40, 190):
-            d.line([0, y, 319, y], fill=p[4 if (y // 8) % 2 else 0])
+def background(ep, mode, pal):
+    """Stand-in playfield (320x150 for Mode 1, 160x150 for Mode 0)."""
+    p = G.pal_rgb(pal)
+    if mode == 0:
+        img = Image.new("RGB", (160, 150), p[0])
+        d = ImageDraw.Draw(img)
+        for y in range(0, 150, 16):
+            d.rectangle([0, y, 159, y + 7], fill=p[4])
+        d.text((60, 70), "EP%d" % ep, fill=p[5])
     else:
-        p = G.pal_rgb("ep%d" % ep)
-        for y in range(40, 190, 2):
+        img = Image.new("RGB", (320, 150), p[0])
+        d = ImageDraw.Draw(img)
+        for y in range(0, 150, 2):
             for x in range(0, 320, 4):
                 if (x // 4 + y // 2) % 9 == 0:
                     img.putpixel((x, y), p[1])
-    h = G.pal_rgb("hud%d" % ep)
-    d.line([0, 18, 319, 18], fill=h[2])
-    s = G.pal_rgb("ep3" if ep == 3 else "shelf%d" % ep)
-    d.rectangle([0, 192, 319, 199], fill=s[1] if ep != 3 else s[6])
-    d.line([0, 192, 319, 192], fill=s[3] if ep != 3 else s[8])
+        d.text((150, 70), "EP%d" % ep, fill=p[2])
     return img
 
 

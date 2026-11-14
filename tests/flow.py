@@ -22,7 +22,7 @@ check("intro card closes on fire", g.b("state") == 1)
 
 def clear_wave():
     g.poke("quota_left", 1)
-    for i in range(400):
+    for i in range(1200):
         g.c.key_down(KEY_SPACE)
         if i % 12 == 0:
             g.c.key_up(KEY_LEFT); g.c.key_up(KEY_RIGHT)
@@ -35,7 +35,8 @@ def clear_wave():
     g.c.key_up(KEY_SPACE); g.c.key_up(KEY_LEFT); g.c.key_up(KEY_RIGHT)
     return g.b("state") == 2
 
-for ep in range(3):
+NUM_EPS = 10
+for ep in range(NUM_EPS):
     for wv in range(3):
         cleared = clear_wave()
         check("ep%d wave%d cleared" % (ep + 1, wv + 1), cleared, "score %s" % g.c.read_ram(g.sym["score"], 3).hex())
@@ -45,11 +46,17 @@ for ep in range(3):
         if wv < 2:
             check("  -> next wave", g.b("wave") == wv + 1 and g.b("episode") == ep, "state %d" % g.b("state"))
             g.run(10)
-    if ep < 2:
-        check("  -> episode %d" % (ep + 2), g.b("episode") == ep + 1 and g.b("state") == 0)
+    if ep < NUM_EPS - 1:
+        for t in range(200):
+            if g.b("state") == 0:
+                break
+            g.run(1)
+        if ep == 0:
+            print("  (episode change finished %d frames later)" % t)
+        check("  -> episode %d" % (ep + 2), g.b("episode") == ep + 1 and g.b("state") == 0, "ep %d state %d" % (g.b("episode"), g.b("state")))
         g.run(60); g.shot("flow_ep%d_card.png" % (ep + 2))
         g.tap(KEY_SPACE); g.run(10)
-check("victory card after episode 3", g.b("state") == 5)
+check("victory card after episode 10", g.b("state") == 5)
 g.shot("flow_victory.png")
 g.tap(KEY_SPACE); g.run(150)
 check("loop 2 starts at episode 1", g.b("loop_n") == 1 and g.b("episode") == 0)

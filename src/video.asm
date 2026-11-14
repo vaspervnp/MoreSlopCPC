@@ -4,7 +4,7 @@
 ; Every sprite drawn into a buffer appends its rectangle to that buffer's
 ; dirty list. Two frames later, when the same buffer is drawn again, those
 ; rectangles are copied back from the clean background in the extra bank
-; (bg_cfg = #C4..#C6, seen at #4000), and then the new frame is drawn.
+; (bg_cfg = #C4, seen at #4000), and then the new frame is drawn.
 ; ============================================================================
 
 ; B = x (bytes), C = y (lines) -> HL = address in the draw buffer. Uses DE.
@@ -285,20 +285,6 @@ rr_ldi_end:
     ret
 
 ; copy the whole background bank to both screens
-bg_to_screens:
-    ld a,(bg_cfg)
-    call set_cfg
-    ld hl,BANK_WIN
-    ld de,#C000
-    ld bc,#4000
-    ldir
-    ld hl,BANK_WIN
-    ld de,#8000
-    ld bc,#4000
-    ldir
-    ld a,CFG_BASE
-    jp set_cfg
-
 ; ----------------------------------------------------------------------------
 ; masked sprite: B = x, C = y, DE = sprite (db w, h, then mask/data pairs)
 ; ----------------------------------------------------------------------------
@@ -470,41 +456,6 @@ fr_col:
 ; ----------------------------------------------------------------------------
 ; LZ unpacker (format in tools/cpcgfx.py): HL = source, DE = destination
 ; ----------------------------------------------------------------------------
-lz_unpack:
-    ld a,(hl)
-    inc hl
-    bit 7,a
-    jr nz,lz_match
-    ld c,a
-    ld b,0
-    inc bc
-    ldir
-    jr lz_unpack
-lz_match:
-    and #7F
-    add a,3
-    ld c,a
-    ld b,0
-    ld a,(hl)
-    inc hl
-    push hl
-    ld h,(hl)
-    ld l,a
-    or h
-    jr z,lz_end
-    push de
-    ex de,hl
-    or a
-    sbc hl,de               ; HL = dst - offset
-    pop de
-    ldir
-    pop hl
-    inc hl
-    jr lz_unpack
-lz_end:
-    pop hl
-    ret
-
 ; ----------------------------------------------------------------------------
 ; text - font: 8x8, chars 32..132 at `font`
 ; strings: 0 ends, TX_FG n / TX_BG n change colours

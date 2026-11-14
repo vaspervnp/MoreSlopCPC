@@ -216,6 +216,148 @@ SONGS["ep3"] = dict(
     loop=0,
 )
 
+# ---------------------------------------------- ep4: deepfake synth-pop (Bm)
+SONGS["ep4"] = dict(
+    speed=5,
+    pats={
+        "d1": "@stab B4:2 D5 F#5 B5 A5 F#5 D5 F#5",
+        "d2": "G4:2 B4 D5 G5 F#5 D5 B4 D5",
+        "d3": "E4:2 G4 B4 E5 D5 B4 G4 B4",
+        "d4": "F#4:2 A#4 C#5 F#5 E5 C#5 A#4 C#5",
+        "m1": "@lead F#5:4 D5 B4:2 C#5 D5:4",
+        "m2": "E5:2 F#5 G5:4 F#5:2 E5 D5:4",
+        "m3": "B5:4 A5 G5:2 F#5 E5:4",
+        "m4": "F#5:6 E5:2 C#5:8",
+        "bs": "@bass B1:2 B2 B1 B2 B1 B2 A1 A2",
+        "dr": "D:K.HSK.HSK.HSKSHS",
+        "dx": "D:K.HSK.HSKKSSSSSS",
+    },
+    A=[("d1", 0), ("d2", 0), ("d3", 0), ("d4", 0)] * 2 + [("m1", 0), ("m2", 0), ("m3", 0), ("m4", 0)] * 2,
+    B=[("bs", 0), ("bs", -4), ("bs", -7), ("bs", -5)] * 4,
+    C=[("dr", 0), ("dr", 0), ("dr", 0), ("dx", 0)] * 4,
+    loop=0,
+)
+
+# --------------------------------------------- ep5: SEO farm hoedown (G)
+SONGS["ep5"] = dict(
+    speed=4,
+    pats={
+        "h1": "@pluck G5:1 G5 B5 D6 B5:2 G5 A5:1 A5 C6 E6 C6:2 A5",
+        "h2": "B5:1 B5 D6 G6 D6:2 B5 A5:1 G5 F#5 E5 D5:4",
+        "h3": "C6:1 C6 E6 C6 B5:2 D6 A5:1 A5 C6 A5 G5:4",
+        "h4": "D6:2 C6 B5 A5 G5:8",
+        "bs": "@bass G2:2 D2 G2 D2 G2 D2 G2 D2",
+        "dr": "D:K.SHK.SHK.SHKSSH",
+        "dx": "D:K.SHK.SHKKSSKSSS",
+    },
+    A=[("h1", 0), ("h2", 0), ("h3", 0), ("h4", 0)] * 4,
+    B=[("bs", 0), ("bs", 0), ("bs", 5), ("bs", 7)] * 4,
+    C=[("dr", 0), ("dr", 0), ("dr", 0), ("dx", 0)] * 4,
+    loop=0,
+)
+
+# ------------------------------------- ep6: helpline hold-music bossa (F)
+SONGS["ep6"] = dict(
+    speed=6,
+    pats={
+        "e1": "@soft A5:3 F5 C5:2 D5:3 E5 F5:2",
+        "e2": "G5:3 E5 C5:2 E5:3 D5 C5:2",
+        "e3": "A5:2 C6 A5 F5 G5:4 E5",
+        "e4": "F5:12 r:4",
+        "c1": "@arpmaj F4:16", "c2": "@arpmin D4:16", "c3": "@arpmin G4:16", "c4": "@arpmaj C4:16",
+        "bs": "@pluck F2:3 C3 F2:2 C3:3 F2 C3:2",
+        "dr": "D:K..HS..HK..HS.HH",
+        "dx": "D:K..HS..HK.KHSSSS",
+    },
+    A=[("e1", 0), ("e2", 0), ("e3", 0), ("e4", 0)] * 2 + [("c1", 0), ("c2", 0), ("c3", 0), ("c4", 0)] * 2,
+    B=[("bs", 0), ("bs", -3), ("bs", 2), ("bs", -5)] * 4,
+    C=[("dr", 0), ("dr", 0), ("dr", 0), ("dx", 0)] * 4,
+    loop=0,
+)
+
+# ---------------------------------- ep7: corporate inspirational ukulele (C)
+SONGS["ep7"] = dict(
+    speed=5,
+    pats={
+        "p1": "@pluck C5:2 E5 G5 C6 G5 E5 G5 C6",
+        "p2": "A4:2 C5 E5 A5 E5 C5 E5 A5",
+        "p3": "F4:2 A4 C5 F5 C5 A4 C5 F5",
+        "p4": "G4:2 B4 D5 G5 D5 B4 D5 G5",
+        "l1": "@lead E5:4 G5 C6:6 B5:2",
+        "l2": "A5:4 G5 E5:8",
+        "l3": "F5:4 A5 C6 D6",
+        "l4": "B5:8 G5",
+        "bs": "@bass C2:4 C3 C2 C3",
+        "dr": "D:K...S...K.K.S...",
+        "dx": "D:K...S...K.K.SSSS",
+    },
+    A=[("p1", 0), ("p2", 0), ("p3", 0), ("p4", 0)] * 2 + [("l1", 0), ("l2", 0), ("l3", 0), ("l4", 0)] * 2,
+    B=[("bs", 0), ("bs", -3), ("bs", 5), ("bs", 7)] * 4,
+    C=[("dr", 0), ("dr", 0), ("dr", 0), ("dx", 0)] * 4,
+    loop=0,
+)
+
+# -------------------------------------------- ep8: kitchen tarantella (Am)
+SONGS["ep8"] = dict(
+    speed=4,
+    pats={
+        "t1": "@stab E5:1 A5 C6 E6 C6 A5 E5:2 A5 C6",
+        "t2": "D5:1 G#5 B5 D6 B5 G#5 E5:2 G#5 B5",
+        "t3": "@lead C6:2 B5 A5 G#5:3 A5",
+        "t4": "B5:2 A5 G#5 A5:6",
+        "t5": "E6:3 D6 C6:2 B5 A5",
+        "t6": "G#5:3 B5 E5:6",
+        "bs": "@pluck A2:2 E3 A3 A2 E3 A3",
+        "dr": "D:K.HS.HK.HS.H",
+        "dx": "D:K.HS.HK.SSSS",
+    },
+    A=[("t1", 0), ("t2", 0), ("t1", 0), ("t2", 0), ("t3", 0), ("t4", 0), ("t5", 0), ("t6", 0)],
+    B=[("bs", 0), ("bs", -5)] * 4,
+    C=[("dr", 0), ("dr", 0), ("dr", 0), ("dx", 0)] * 2,
+    loop=0,
+)
+
+# --------------------------------------------- ep9: slop-fi festival EDM (Fm)
+SONGS["ep9"] = dict(
+    speed=6,
+    pats={
+        "s1": "@arpmin F4:4 F4 F4 F4",
+        "w1": "@lead C6:2 C6 Ab5 F5 G5:4 Ab5:2 G5",
+        "w2": "F5:2 F5 Ab5 C6 Bb5:4 Ab5:2 G5",
+        "w3": "Eb6:4 Db6 C6 Bb5",
+        "w4": "C6:8 r",
+        "bs": "@bass F1:2 F2 F1 F2 F1 F2 F1 F2",
+        "dr": "D:K.H.S.H.K.H.S.H.",
+        "dx": "D:K.K.K.K.SSSSSSSS",
+    },
+    A=[("s1", 0), ("s1", -4), ("s1", 3), ("s1", -2)] * 2 + [("w1", 0), ("w2", 0), ("w3", 0), ("w4", 0)] * 2,
+    B=[("bs", 0), ("bs", -4), ("bs", 3), ("bs", -2)] * 4,
+    C=[("dr", 0), ("dr", 0), ("dr", 0), ("dx", 0)] * 4,
+    loop=0,
+)
+
+# --------------------------------------------- ep10: the singularity (Dm)
+SONGS["ep10"] = dict(
+    speed=4,
+    pats={
+        "x1": "@stab D5:1 D5 F5 D5 A5 D5 F5 D5 C6 D5 A5 D5 F5 D5 E5 D5",
+        "x2": "Bb4:1 Bb4 D5 Bb4 F5 Bb4 D5 Bb4 A5 Bb4 F5 Bb4 D5 Bb4 C5 Bb4",
+        "x3": "C5:1 C5 E5 C5 G5 C5 E5 C5 Bb5 C5 G5 C5 E5 C5 D5 C5",
+        "x4": "A4:1 A4 C#5 A4 E5 A4 C#5 A4 G5 A4 E5 A4 C#5 A4 E5 G5",
+        "y1": "@lead D6:6 C6:2 A5:4 F5",
+        "y2": "Bb5:6 A5:2 F5:4 D5",
+        "y3": "C6:6 Bb5:2 G5:4 E5",
+        "y4": "A5:4 C#6 E6:8",
+        "bs": "@bass D2:1 D2 D3 D2 D2 D3 D2 D3 D2 D2 D3 D2 D2 D3 C3 D3",
+        "dr": "D:K.HKS.HKK.HKS.KS",
+        "dx": "D:KKSKKKSKKKSSSSSS",
+    },
+    A=[("x1", 0), ("x2", 0), ("x3", 0), ("x4", 0)] * 2 + [("y1", 0), ("y2", 0), ("y3", 0), ("y4", 0)] * 2,
+    B=[("bs", 0), ("bs", -4), ("bs", -2), ("bs", -5)] * 4,
+    C=[("dr", 0), ("dr", 0), ("dr", 0), ("dx", 0)] * 4,
+    loop=0,
+)
+
 # ---------------------------------------------------------------- jingles
 SONGS["clear"] = dict(
     speed=4,
@@ -238,7 +380,8 @@ SONGS["lost"] = dict(
           "d": "D:S.S.S.S.S.K....."},
     A=[("l", 0)], B=[("b", 0)], C=[("d", 0)], loop=None)
 
-SONG_ORDER = ["menu", "ep1", "ep2", "ep3", "clear", "over", "lost"]
+SONG_ORDER = ["menu", "ep", "clear", "over", "lost"]   # "ep" = the song of the current episode
+EP_SONGS = ["ep%d" % n for n in range(1, 11)]
 
 
 def per(note):
@@ -291,6 +434,41 @@ def sfx_asm():
     return out
 
 
+def song_asm(sname, lab, out):
+    """Song `sname` as asm under label `lab` (header first). Returns pattern bytes."""
+    s = SONGS[sname]
+    total = 0
+    out.append("")
+    out.append("%s:" % lab)
+    out.append("    db %d" % s["speed"])
+    out.append("    dw %s_A,%s_B,%s_C" % (lab, lab, lab))
+    rows_per_ch = {}
+    pat_rows = {}
+    for pn, txt in s["pats"].items():
+        if txt.startswith("D:"):
+            data, rows = compile_drums(txt[2:])
+        else:
+            data, rows = compile_pattern(txt)
+        pat_rows[pn] = rows
+        total += len(data)
+        out.append("%s_p%s:" % (lab, pn))
+        out.append("    db " + ",".join("#%02X" % v for v in data))
+    for ch in "ABC":
+        out.append("%s_%s:" % (lab, ch))
+        rows = 0
+        for pn, tr in s[ch]:
+            out.append("    dw %s_p%s : db %d" % (lab, pn, tr & 0xFF))
+            rows += pat_rows[pn]
+        rows_per_ch[ch] = rows
+        if s["loop"] is None:
+            out.append("    dw 0,0")
+        else:
+            out.append("    dw 0,%s_%s+%d" % (lab, ch, 3 * s["loop"]))
+    if len(set(rows_per_ch.values())) != 1:
+        sys.exit("song %s: channels have different lengths %s" % (sname, rows_per_ch))
+    return total
+
+
 def build(path):
     out = ["; generated by tools/music.py - do not edit", ""]
     # period table: 96 notes from C1, AY clocked at 1 MHz
@@ -310,43 +488,22 @@ def build(path):
         out.append("inst_%s: db %s" % (k, ",".join("#%02X" % v for v in b)))
     total = 0
     for sname in SONG_ORDER:
-        s = SONGS[sname]
-        out.append("")
-        out.append("song_%s:" % sname)
-        out.append("    db %d" % s["speed"])
-        out.append("    dw song_%s_A,song_%s_B,song_%s_C" % (sname, sname, sname))
-        rows_per_ch = {}
-        pat_rows = {}
-        for pn, txt in s["pats"].items():
-            if txt.startswith("D:"):
-                data, rows = compile_drums(txt[2:])
-            else:
-                data, rows = compile_pattern(txt)
-            pat_rows[pn] = rows
-            total += len(data)
-            out.append("pat_%s_%s:" % (sname, pn))
-            out.append("    db " + ",".join("#%02X" % v for v in data))
-        for ch in "ABC":
-            out.append("song_%s_%s:" % (sname, ch))
-            rows = 0
-            for pn, tr in s[ch]:
-                out.append("    dw pat_%s_%s : db %d" % (sname, pn, tr & 0xFF))
-                rows += pat_rows[pn]
-            rows_per_ch[ch] = rows
-            if s["loop"] is None:
-                out.append("    dw 0,0")
-            else:
-                out.append("    dw 0,song_%s_%s+%d" % (sname, ch, 3 * s["loop"]))
-        if len(set(rows_per_ch.values())) != 1:
-            sys.exit("song %s: channels have different lengths %s" % (sname, rows_per_ch))
+        if sname != "ep":
+            total += song_asm(sname, "song_%s" % sname, out)
     out.append("")
     for i, sname in enumerate(SONG_ORDER):
         out.append("SNG_%s equ %d" % (sname.upper(), i))
-    out.append("mus_songs: dw " + ",".join("song_" + s for s in SONG_ORDER))
+    out.append("mus_songs: dw " + ",".join(("lo_slot+EL_SONG" if s == "ep" else "song_" + s)
+                                           for s in SONG_ORDER))
     out += sfx_asm()
     with open(path, "w") as f:
         f.write("\n".join(out) + "\n")
-    print("music: %d songs, %d pattern bytes" % (len(SONG_ORDER), total))
+    for i, sname in enumerate(EP_SONGS):
+        eo = ["; generated by tools/music.py - do not edit"]
+        song_asm(sname, "e%d_song" % (i + 1), eo)
+        with open(os.path.join(os.path.dirname(path), "ep%d_song.asm" % (i + 1)), "w") as f:
+            f.write("\n".join(eo) + "\n")
+    print("music: %d songs + %d episode songs, %d pattern bytes" % (len(SONG_ORDER) - 1, len(EP_SONGS), total))
 
 
 if __name__ == "__main__":

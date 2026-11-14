@@ -1,8 +1,9 @@
 ; ============================================================================
-; The special obstacles of each episode
-;   1  AI pop-ups that cover part of the screen and swallow zaps
-;   2  clickbait banners that fly across and swallow zaps
-;   3  crypto-bros who float down on bubbles and slow Themis down
+; The obstacles; each episode has some of them (ep_obst, OB_* bits):
+;   pop-ups that cover part of the screen and swallow zaps
+;   banners that fly across and swallow zaps (Mode 1 only)
+;   "bros" who float down on bubbles and slow Themis down
+; Their words come from the episode header (EH_*).
 ; ============================================================================
 
 BR_ST   equ 0       ; 0 off, 1 floating, 2 walking, 3 falling
@@ -13,69 +14,149 @@ BR_T    equ 4
 BR_SIZE equ 5
 
 POPUP_W equ 28
+POPUP_W0 equ 52         ; Mode 0: 12 characters of 4 bytes + the frame
 POPUP_H equ 56
 BAN_W   equ 40
 BAN_H   equ 12
 
 update_obstacles:
-    ld a,(episode)
-    or a
-    jr z,obst_popup
-    dec a
-    jp z,obst_banner
-    jp obst_bros
-
-draw_obstacles:
-    ld a,(episode)
-    dec a
-    jp z,draw_banner
-    dec a
-    jp z,draw_bros
-    ret
-
-; B = bolt x, C = bolt y -> carry if an obstacle swallowed the zap
-bolt_vs_obstacles:
-    ld a,(episode)
-    or a
-    jp z,bv_popup
-    dec a
-    jp z,bv_banner
-    jp bv_bros
-
-; ============================================================================
-; episode 1: pop-ups
-; ============================================================================
-obst_popup:
-    ld a,(popup_on)
-    or a
-    jr nz,op_live
-    ld a,(ov_on)
-    or a
-    ret nz
+    ld a,(ep_obst)
+    and OB_POP
+    call nz,popup_tick
+    ld a,(ep_obst)
+    and OB_BAN
+    call nz,ban_tick
+    ld a,(ep_obst)
+    and OB_BRO
+    call nz,bros_tick
+    ; time for a new one?
     ld hl,obst_timer
     dec (hl)
     ret nz
     ld a,(obst_int)
     ld (hl),a
-    ; x = 4 + 2*rand(25), y = POPUP_MINY + rand(40)
+    ; pick one of the episode's kinds that is not already out
+    ld c,3
+uo_try:
+    push bc
+    ld b,3
+    call rand_mod
+    pop bc
+    ld b,a
+    inc b
+    ld a,1
+uo_bit:
+    dec b
+    jr z,uo_got
+    add a,a
+    jr uo_bit
+uo_got:
+    ld b,a
+    ld a,(ep_obst)
+    and b
+    jr z,uo_next
+    cp OB_POP
+    jr z,uo_pop
+    cp OB_BAN
+    jr z,uo_ban
+    ; bro: one at a time (they are big sprites)
+    ld a,(bros+BR_ST)
+    or a
+    jp z,bro_new
+    jr uo_next
+uo_pop:
+    ld a,(popup_on)
+    ld hl,ov_on
+    or (hl)
+    jp z,popup_new
+    jr uo_next
+uo_ban:
+    ld a,(ban_on)
+    or a
+    jp z,banner_new
+uo_next:
+    dec c
+    jr nz,uo_try
+    ret
+
+draw_obstacles:
+    ld a,(ep_obst)
+    and OB_BAN
+    call nz,draw_banner
+    ld a,(ep_obst)
+    and OB_BRO
+    ret z
+    jp draw_bros
+
+; B = bolt x, C = bolt y -> carry if an obstacle swallowed the zap
+bolt_vs_obstacles:
+    ld a,(ep_obst)
+    and OB_POP
+    jr z,bvo_1
+    call bv_popup
+    ret c
+bvo_1:
+    ld a,(ep_obst)
+    and OB_BAN
+    jr z,bvo_2
+    call bv_banner
+    ret c
+bvo_2:
+    ld a,(ep_obst)
+    and OB_BRO
+    ret z
+    jp bv_bros
+
+; ============================================================================
+; pop-ups
+; ============================================================================
+popup_tick:
+    ld a,(popup_on)
+    or a
+    ret z
+    ld hl,popup_life
+    dec (hl)
+    ret nz
+    jr popup_close
+
+popup_new:
+    ; Mode 1: x = 4 + 2*rand(25); Mode 0 (wider, 4 bytes per char): x = 4*rand(7)
+    ld a,(cur_mode)
+    or a
+    jr z,pn_m0
     ld b,25
     call rand_mod
     add a,a
     add a,4
+    jr pn_x
+pn_m0:
+    ld b,7
+    call rand_mod
+    add a,a
+    add a,a
+pn_x:
     ld (pp_x),a
     ld b,40
     call rand_mod
     add a,POPUP_MINY
     ld (pp_y),a
-    ld b,3
+    ; one of the episode's variants (4 line pointers each)
+    ld a,EH_POPT
+    call ep_ptr
+    ld a,(hl)
+    inc hl
+    push hl
+    ld b,a
     call rand_mod
+    pop hl
     add a,a
-    add a,a
-    add a,a                 ; 8 bytes per variant (4 pointers)
     ld e,a
     ld d,0
-    ld hl,popup_texts
     add hl,de
+    ld a,(hl)
+    inc hl
+    ld h,(hl)
+    ld l,a
     ld (pp_txt),hl
     call popup_build
     ld hl,popup_cmds
@@ -88,12 +169,8 @@ obst_popup:
     ld (popup_life),a
     ld a,SFX_POPUP
     call play_sfx
-    ld hl,msgs_popup
-    jp show_msg_rand
-op_live:
-    ld hl,popup_life
-    dec (hl)
-    ret nz
+    ld a,EH_POPIN
+    jp ep_msg
 popup_close:
     xor a
     ld (popup_on),a
@@ -106,17 +183,23 @@ popup_build:
     ld b,a
     ld a,(pp_y)
     ld c,a
+    ld a,(cur_mode)
+    or a
+    ld e,POPUP_W
+    jr nz,pb_w
+    ld e,POPUP_W0
+pb_w:
     ; header
     ld (ix+0),#FF
     ld (ix+1),b
     ld (ix+2),c
-    ld (ix+3),POPUP_W
+    ld (ix+3),e
     ld (ix+4),POPUP_H
     ; white frame
     ld (ix+5),4
     ld (ix+6),b
     ld (ix+7),c
-    ld (ix+8),POPUP_W
+    ld (ix+8),e
     ld (ix+9),POPUP_H
     ld (ix+10),3
     ; title bar
@@ -127,7 +210,9 @@ popup_build:
     ld a,c
     inc a
     ld (ix+13),a
-    ld (ix+14),POPUP_W-2
+    ld a,e
+    sub 2
+    ld (ix+14),a
     ld (ix+15),9
     ld (ix+16),2
     ; inside
@@ -138,11 +223,18 @@ popup_build:
     ld a,c
     add a,11
     ld (ix+19),a
-    ld (ix+20),POPUP_W-2
+    ld a,e
+    sub 2
+    ld (ix+20),a
     ld (ix+21),POPUP_H-13
     ld (ix+22),0
-    ; title text
+    ; title text: column = x/2+1 (Mode 1) or x/4+1 (Mode 0)
+    ld a,(cur_mode)
+    or a
     ld a,b
+    jr nz,pb_c1
+    srl a
+pb_c1:
     srl a
     inc a
     ld d,a                  ; text column
@@ -151,7 +243,10 @@ popup_build:
     ld a,c
     inc a
     ld (ix+25),a
-    ld hl,txt_popup_title
+    push de
+    ld a,EH_POPTITLE
+    call ep_ptr
+    pop de
     ld (ix+26),l
     ld (ix+27),h
     ; four lines of text
@@ -208,26 +303,25 @@ bv_popup:
     call popup_close
     ld a,#30
     call add_score
-    ld hl,msg_popup_closed
-    call show_msg
+    ld a,EH_POPDONE
+    call ep_msg
 bvp_1:
     scf
     ret
 
 ; ============================================================================
-; episode 2: clickbait banners
+; banners
 ; ============================================================================
-obst_banner:
+ban_tick:
     ld a,(ban_on)
     or a
-    jr nz,ob_move
-    ld hl,obst_timer
-    dec (hl)
-    ret nz
-    ld a,(obst_int)
-    ld (hl),a
+    ret z
+    jr ob_move
+
+banner_new:
     ; pick a headline and paint the banner into ban_buf
-    ld hl,headlines
+    ld a,EH_HEADS
+    call ep_ptr
     ld a,(hl)
     inc hl
     push hl
@@ -273,8 +367,8 @@ ob_dir:
     ld (ban_on),a
     ld a,SFX_POPUP
     call play_sfx
-    ld hl,msg_banner
-    jp show_msg
+    ld a,EH_BANIN
+    jp ep_msg
 ob_move:
     ld a,(frame_ctr)
     and 1
@@ -387,8 +481,8 @@ bv_banner:
     ld (ban_on),a
     ld a,#50
     call add_score
-    ld hl,msg_banner_down
-    call show_msg
+    ld a,EH_BANDONE
+    call ep_msg
     ; a few poofs along it
     ld a,(ban_y)
     ld c,a
@@ -413,19 +507,10 @@ bvb_1:
     ret
 
 ; ============================================================================
-; episode 3: crypto-bros
+; bros
 ; ============================================================================
-obst_bros:
-    ld hl,obst_timer
-    dec (hl)
-    jr nz,obr_tick
-    ld a,(obst_int)
-    ld (hl),a
+bro_new:
     ld ix,bros              ; one bro at a time (they are big sprites)
-    ld a,(ix+BR_ST)
-    or a
-    jr nz,obr_tick
-obr_new:
     ld (ix+BR_ST),1
     ld b,74
     call rand_mod
@@ -433,9 +518,10 @@ obr_new:
     ld (ix+BR_Y),PLAY_TOP+20
     ld (ix+BR_YF),0
     ld (ix+BR_T),0
-    ld hl,msgs_bro_in
-    call show_msg_rand
-obr_tick:
+    ld a,EH_BROIN
+    jp ep_msg
+
+bros_tick:
     ld ix,bros
     call bro_tick
     ld ix,bros+BR_SIZE
@@ -482,8 +568,8 @@ bt_walk:
     ld b,(ix+BR_X)
     ld c,PLAYER_Y
     call add_poof
-    ld hl,msg_bro_left
-    jp show_msg
+    ld a,EH_BROLEFT
+    jp ep_msg
 bw_1:
     and 1
     jr nz,bw_touch
@@ -510,8 +596,8 @@ bw_touch:
     ld b,(ix+BR_X)
     ld c,PLAYER_Y
     call add_poof
-    ld hl,msgs_bro
-    jp show_msg_rand
+    ld a,EH_BROHIT
+    jp ep_msg
 
 draw_bros:
     ld ix,bros
@@ -570,8 +656,8 @@ bv_bro:
     call play_sfx
     ld a,#25
     call add_score
-    ld hl,msg_bubble
-    call show_msg
+    ld a,EH_BRODONE
+    call ep_msg
     scf
     ret
 bvr_no:

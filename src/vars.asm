@@ -95,8 +95,9 @@ as_op:      defs 3,0
 ; game
 inp:        db 0
 inp_new:    db 0
+pinp:       db 0                ; inp as the player sees it (maybe reversed)
 seed:       dw #ACE1
-cur_set:    dw spr_set_ep1
+cur_set:    dw EP_HI
 diff_ptr:   dw diff_tab
 difficulty: db 1
 lives:      db 3
@@ -122,7 +123,10 @@ state:      db 0
 state_timer: db 0
 streak:     db 0
 mult:       db 1
-ep_raster:  dw rast_ep1
+ep_raster:  dw rast_black
+ep_obst:    db 0
+ep_mech:    db 0
+ep_dir:     db 0
 ep_card:    dw 0
 ep_pen0:    db 0
 ep_shelf1:  db 0
@@ -152,6 +156,11 @@ ban_x:      db 0
 ban_y:      db 0
 ban_dx:     db 0
 ban_hp:     db 0
+player_rev: db 0                ; frames of reversed controls (deepfake)
+beat_timer: db 0                ; frames to the next bass drop
+drop_timer: db 0                ; frames of the bass drop left
+boss_on:    db 0                ; the SlopBot fights back
+robot_flash: db 0
 objects_end:
 
 ; obstacles
@@ -160,6 +169,9 @@ pp_y:       db 0
 pp_txt:     dw 0
 popup_cmds: defs 60,0
 ban_buf:    defs BAN_W*BAN_H,0
+
+; the current episode's LOW blob (song, raster zones)
+lo_slot:    defs LO_SLOT_SIZE,0
 
 ; menu
 menu_page:  db 0

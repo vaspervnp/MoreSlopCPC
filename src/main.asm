@@ -8,10 +8,13 @@
 ;    #4000-#7FFF  HIGH: font, sprites, texts  /  window for banks #C4-#C7
 ;    #8000-#BFFF  screen buffer B
 ;    #C000-#FFFF  screen buffer A
-;  Banks: #C4-#C6 background of episodes 1-3, #C7 packed menu picture.
+;  Banks: #C4 background of the current episode; #C5-#C7 everything else,
+;  packed (menu picture, the ten backgrounds, the episode blobs).
+;  #6800-#7FFF holds the current episode's HIGH blob, lo_slot its LOW blob.
 ; ============================================================================
 
     include "const.asm"
+    include "../build/ep_const.asm"
 
 ; ============================================================================
 ; LOW
@@ -50,11 +53,11 @@ low_init:
     include "game.asm"
     include "obstacles.asm"
     include "menu.asm"
+    include "episode.asm"
     include "data.asm"
     include "../build/tables.asm"
     include "../build/palettes.asm"
     include "../build/music_data.asm"
-    include "../build/c7.asm"
     include "vars.asm"
 low_end:
 
@@ -124,6 +127,11 @@ font:
     include "../build/texts.asm"
 high_end:
 
-    assert high_end <= #8000
-    print "HIGH #4000-",{hex4}high_end," free ",#8000-high_end
+    assert high_end <= EP_HI
+    print "HIGH #4000-",{hex4}high_end," free ",EP_HI-high_end
     save "build/HIGH.BIN",#4000,high_end-#4000
+
+; ============================================================================
+; the episodes, each in its own memory space (packed by tools/pack_banks.py)
+; ============================================================================
+    include "../build/episodes.asm"

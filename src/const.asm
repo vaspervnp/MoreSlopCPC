@@ -8,6 +8,17 @@ CFG_BASE    equ #C0             ; RAM config: 64K base
 SCR_C0      equ #C0             ; screen buffer at #C000
 SCR_80      equ #80             ; screen buffer at #8000
 BANK_WIN    equ #4000           ; where extra banks appear (configs #C4-#C7)
+BG_BANK     equ #C4             ; bank holding the current episode's background
+DIR_CFG     equ #C5             ; bank with the directory of packed data at #4000
+EP_HI       equ #6800           ; the episode's HIGH blob (256-aligned)
+LO_SLOT_SIZE equ 448            ; the episode's LOW blob (song, raster zones)
+
+; LOW blob header (src: tools/episodes.py)
+EL_RAST     equ 0               ; raster table (6 words)
+EL_MODE     equ 12
+EL_OBST     equ 13              ; OB_* mask
+EL_MECH     equ 14              ; MC_* mask
+EL_SONG     equ 16
 
 ; gate array values (ROMs off, no int reset)
 GA_MODE0    equ #8C
@@ -57,6 +68,12 @@ SS_POWER    equ 26              ; coffee, heart
 SS_POOF     equ 30              ; 3 frames
 SS_BOLT     equ 36              ; 1
 SS_BRO      equ 38              ; float, walk1, walk2
+SS_DECOY    equ 44              ; 2 frames
+
+; item kinds
+K_COFFEE    equ 3
+K_HEART     equ 4
+K_DECOY     equ 5
 
 ; game states -----------------------------------------------------------------
 ST_INTRO    equ 0

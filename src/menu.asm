@@ -19,13 +19,9 @@ menu:
     call play_song
     call wait_vbl
     ; unpack the picture into #8000, then copy it to the visible #C000
-    ld a,#C7
-    call set_cfg
-    ld hl,c7_menu
+    xor a                   ; directory entry 0
     ld de,#8000
-    call lz_unpack
-    ld a,CFG_BASE
-    call set_cfg
+    call unpack_entry
     ld hl,#8000
     ld de,#C000
     ld bc,#4000
@@ -116,7 +112,7 @@ mk_next:
     ld (page_timer),a
     ld a,(menu_page)
     inc a
-    cp 4
+    cp MENU_NPAGES+1
     jr c,mk_p1
     xor a
 mk_p1:

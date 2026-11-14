@@ -258,9 +258,8 @@ hud_info:
     ld (hl),3
     inc hl
     ld a,(episode)
-    add a,'1'
-    ld (hl),a
-    inc hl
+    inc a
+    call dec2               ; "01".."10"
     ld (hl),0
     ld hl,str_buf
     ld bc,2*256+HUD_ROW_INFO
@@ -269,8 +268,10 @@ hud_info:
     ld a,(wave)
     add a,'1'
     ld (hl),a
+    inc hl
+    ld (hl),0
     ld hl,str_buf
-    ld bc,8*256+HUD_ROW_INFO
+    ld bc,9*256+HUD_ROW_INFO
     call text_m1
     ld a,(quota_left)
     ld hl,str_buf+2
