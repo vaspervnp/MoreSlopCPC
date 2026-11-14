@@ -242,10 +242,10 @@ MENU_PAGES = [
      fg(14) + "THEMIS CAN SAVE US", fg(14) + "FROM THE FEED!"],
     [fg(1) + bg(0) + "POWER-UPS", fg(14) + "COFFEE: ZAPS ALL", fg(14) + "HEART: EXTRA LIFE",
      fg(10) + "6 HITS IN A ROW =", fg(10) + "SCORE MULTIPLIER"],
-    [fg(1) + bg(0) + "THE TOUR, PART 1", fg(14) + "1 HALLUCINATIONS", fg(14) + "2 CLICKBAIT",
-     fg(14) + "3 CRYPTO 4 DEEPFAKE", fg(14) + "5 THE SEO FARM"],
+    [fg(1) + bg(0) + "THE TOUR, PART 1", fg(14) + "1 HALLUCINATIONS", fg(14) + "2 CLICKBAIT 3 NFTS",
+     fg(14) + "4 DEEPFAKE STUDIO", fg(14) + "5 THE SEO FARM"],
     [fg(1) + bg(0) + "THE TOUR, PART 2", fg(14) + "6 CHATBOT HELPLINE", fg(14) + "7 THOUGHT LEADERS",
-     fg(14) + "8 KITCHEN 9 SLOP-FI", fg(10) + "10 THE SINGULARITY"],
+     fg(14) + "8 KITCHEN 9 SLOPFI", fg(10) + "10 THE SINGULARITY"],
 ]
 SCROLL = ("      ***  MORE SLOP  ***   THE AI HAS BEEN UP ALL NIGHT PRINTING SIX-FINGERED HANDS, "
           "THREE-HEADED CATS, 900 SELF-HELP E-BOOKS, JPEGS OF BORED APES, DEEPFAKES, GLUE PIZZA AND "
@@ -396,7 +396,7 @@ def build(path):
     for i, page in enumerate(MENU_PAGES):
         out.append("mp_%d: dw %s,0" % (i, ",".join("mp_%d_%d" % (i, j) for j in range(len(page)))))
         for j, line in enumerate(page):
-            check(line, 20, "menu page")
+            check(line, 18, "menu page")
             out.append("mp_%d_%d:" % (i, j))
             out.append(asm_str(line))
     out.append("scroll_text:")

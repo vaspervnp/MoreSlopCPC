@@ -54,7 +54,7 @@ SPRITES = {
     "bolt_m0":   (0, "ep3", 4, 10, 1),
 }
 # obstacle characters (the "bros"): art name prefix -> mode
-BROS = {"bro": 0, "guru": 1, "chef": 0}
+BROS = {"bro": 0, "guru": 1, "chef": 0, "evang": 1}
 
 
 def ep_pal(e):

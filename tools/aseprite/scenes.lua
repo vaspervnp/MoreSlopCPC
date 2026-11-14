@@ -65,6 +65,15 @@ convert("bg3", "bg3_pf", EP3, false, true)
 convert("menu_scene", "menu_scene", MENU13, false, true)
 convert("loader_scene", "loader_scene", LOADER, false, true)
 
+-- episodes 4-10 (palettes from tools/cpcgfx.py)
+convert("bg4", "bg4_pf", { "#800080", "#00FF00", "#FF8080", "#FFFFFF" }, true, false)
+convert("bg5", "bg5_pf", { "#000000", "#80FF00", "#008000", "#FFFF80" }, true, false)
+convert("bg6", "bg6_pf", { "#000000", "#80FFFF", "#FF80FF", "#FFFFFF", "#8080FF", "#80FF80", "#800000", "#FF8000", "#FFFF00", "#FF8080", "#00FF00", "#FFFF80", "#0080FF", "#808080", "#FF0000", "#008080" }, false, true)
+convert("bg7", "bg7_pf", { "#000080", "#FFFFFF", "#0080FF", "#FFFF00" }, true, false)
+convert("bg8", "bg8_pf", { "#000000", "#80FFFF", "#FF80FF", "#FFFFFF", "#808000", "#FFFF80", "#800000", "#FF8000", "#FFFF00", "#FF8080", "#00FF00", "#008000", "#0080FF", "#808080", "#FF0000", "#800080" }, false, true)
+convert("bg9", "bg9_pf", { "#000000", "#00FFFF", "#FF00FF", "#FFFFFF", "#800080", "#0000FF", "#800000", "#FF8000", "#FFFF00", "#FF8080", "#00FF00", "#80FF00", "#0080FF", "#808080", "#FF0000", "#FF0080" }, false, true)
+convert("bg10", "bg10_pf", { "#000000", "#00FFFF", "#FF0000", "#FFFFFF" }, true, false)
+
 -- shelf strips: a store shelf with price tags -----------------------------
 local function strip(out, w, rows, keys)
   local spr = Sprite(w, #rows, ColorMode.RGB)

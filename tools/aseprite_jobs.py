@@ -27,6 +27,20 @@ JOBS = [
     ("bro_walk", "bro_walk", ["0", "1"], "ep3", 12, 24),
     ("bro_float", "bro_float", ["0"], "ep3", 12, 32),
 ]
+ITEM_FR = ["0_0", "0_1", "1_0", "1_1", "2_0", "2_1"]
+for _n, _mode in ((4, 1), (5, 1), (6, 0), (7, 1), (8, 0), (9, 0), (10, 1)):
+    _w = 16 if _mode == 1 else 8
+    JOBS.append(("items_ep%d" % _n, "items_ep%d" % _n, ITEM_FR, "ep%d" % _n, _w, 16))
+JOBS += [
+    ("decoy_ep4", "decoy_ep4", ["0", "1"], "ep4", 16, 16),
+    ("decoy_ep6", "decoy_ep6", ["0", "1"], "ep6", 8, 16),
+    ("guru_walk", "guru_walk", ["0", "1"], "ep7", 24, 24),
+    ("guru_float", "guru_float", ["0"], "ep7", 24, 32),
+    ("evang_walk", "evang_walk", ["0", "1"], "ep10", 24, 24),
+    ("evang_float", "evang_float", ["0"], "ep10", 24, 32),
+    ("chef_walk", "chef_walk", ["0", "1"], "ep8", 12, 24),
+    ("chef_float", "chef_float", ["0"], "ep8", 12, 32),
+]
 
 
 def lua_str(s):
@@ -34,8 +48,11 @@ def lua_str(s):
 
 
 def main():
+    only = sys.argv[1:]          # optional: job names to run
     out = ["JOBS = {"]
     for name, d, frames, pal, w, h in JOBS:
+        if only and name not in only:
+            continue
         cols = [G.hexrgb(f) for f in G.PAL[pal]]
         fr = [lua_str(WIN + "\\art\\renders\\%s\\%s.png" % (d, f)) for f in frames]
         out.append("  { name=%s, w=%d, h=%d, outline=true, palette={%s}, frames={%s}, aseprite=%s, png=%s },"

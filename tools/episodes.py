@@ -30,7 +30,7 @@ EPISODES = [
     dict(n=7, mode=1, title=("THE THOUGHT", "LEADER SUMMIT"), obst=BRO, mech=0, bro="guru"),
     dict(n=8, mode=0, title=("THE AI", "KITCHEN"), obst=BRO, mech=SPLIT, bro="chef"),
     dict(n=9, mode=0, title=("THE SLOP-FI", "FESTIVAL"), obst=POP, mech=BEAT, bro=None),
-    dict(n=10, mode=1, title=("THE SLOP", "SINGULARITY"), obst=POP | BAN | BRO, mech=BOSS, bro="guru"),
+    dict(n=10, mode=1, title=("THE SLOP", "SINGULARITY"), obst=POP | BAN | BRO, mech=BOSS, bro="evang"),
 ]
 for _e in EPISODES:
     assert not (_e["mode"] == 0 and _e["obst"] & BAN), "banners are Mode 1 only"

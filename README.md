@@ -3,8 +3,9 @@
 An arcade game for the **Amstrad CPC 6128** about saving civilisation from AI slop.
 Themis runs along the bottom of the screen and zaps everything the SlopBot prints
 before it lands on the shop shelves: six-fingered hands, three-headed cats,
-melting portraits, clickbait, self-help e-books, bored apes, metaverse land and
-shitcoins. Written in Z80 assembly; graphics modelled in Blender and finished in
+melting portraits, clickbait, self-help e-books, bored apes, deepfakes, SEO
+listicles, chatbot hold music, thought leadership, glue pizza, AI pop songs and,
+finally, the SlopBot itself - ten episodes of it. Written in Z80 assembly; graphics modelled in Blender and finished in
 Aseprite; music and effects play on the AY from the interrupt.
 
 ![Menu](screenshots/menu.png)
@@ -12,6 +13,7 @@ Aseprite; music and effects play on the AY from the interrupt.
 | | |
 |---|---|
 | ![Episode 1](screenshots/episode1.png) | ![Episode 3](screenshots/episode3.png) |
+| ![Episode 7](screenshots/episode7.png) | ![Episode 8](screenshots/episode8.png) |
 
 ## Play
 
@@ -45,7 +47,7 @@ multiplier (up to x4). Coffee zaps everything on screen, a heart gives a life.
 | TERMINALLY ONLINE | 3 | 3 | normal |
 | SINGULARITY | 2 | 3 | fast, crowded |
 
-**Episodes** - three waves each; after the third episode the game loops, faster.
+**Episodes** - three waves each; after the tenth episode the game loops, faster.
 
 1. **The Hallucination Factory** (Mode 1, cyan / magenta / white on dark blue):
    the AI throws pop-ups ("As an AI, I cannot allow the destruction of this
@@ -54,6 +56,21 @@ multiplier (up to x4). Coffee zaps everything on screen, a heart gives a life.
    and block zaps; four hits debunk one.
 3. **The Crypto Graveyard** (Mode 0, 16 colours): crypto-bros float down on
    bubbles - pop them, or they walk up to Themis and slow him down.
+4. **The Deepfake Studio** (green screen on purple): deepfake ads pop up, and
+   deepfakes of Themis fall with the slop - zap one and left becomes right.
+5. **The SEO Content Farm** (terminal green): listicles and keyword soup that
+   split in two when zapped ("part 2 of 47"), under SEO banners.
+6. **The Chatbot Helpline** (Mode 0, pastel call centre): robo-phones and
+   "typing..." bubbles; Gary, the last human agent, falls too - don't zap Gary.
+7. **The Thought Leader Summit** (corporate blue): "Agree?" posts and AI
+   headshots; gurus drift down on EGO balloons and slow you with a course.
+8. **The AI Kitchen** (Mode 0): glue pizza, rock salad and screw spaghetti that
+   split; chef-bots parachute in.
+9. **The Slop-Fi Festival** (Mode 0, neon): AI hits on vinyl and cassette,
+   playlist pop-ups, and every ten seconds the bass drops - so does the slop.
+10. **The Slop Singularity** (red alert data centre): pop-ups, banners and AGI
+    evangelists at once, and the last wave ends with a fight against the
+    SlopBot itself (twelve zaps).
 
 ## How it works
 
@@ -70,13 +87,20 @@ multiplier (up to x4). Coffee zaps everything on screen, a heart gives a life.
   transposition, instruments with volume/arpeggio steps, noise drums. Four
   songs (menu, one per episode) and three jingles. Effects take over channel C.
 - **Text** uses the CPC's own ROM font, copied at start-up.
-- **Memory.** Code, music and variables live at #0040-#3EFF, sprites/texts at
-  #4000-#7FFF (which doubles as the window onto the backgrounds), the loader
-  screen is loaded straight into video memory by BASIC.
+- **Memory.** Code, music and variables live at #0040-#3EFF, shared sprites
+  and texts at #4000-#67FF (#4000-#7FFF doubles as the window onto the
+  extra banks), the loader screen is loaded straight into video memory.
+- **Ten episodes in 128K.** Everything that differs per episode - background,
+  slop and obstacle sprites, texts, song, palettes - is packed (LZ with an
+  optimal parse, `tools/pack_banks.py`) into banks #C5-#C7: 205K of data in
+  41K. When an episode starts it is unpacked: the background into bank #C4
+  (for repairs) and both screens, the rest into #6800-#7FFF and a slot in
+  low memory (`src/episode.asm`).
 
 ## Art pipeline
 
-1. `tools/blender/sprites.py`, `tools/blender/scenes.py` build every model and
+1. `tools/blender/sprites.py`, `tools/blender/scenes.py` (episodes 1-3) and
+   `tools/blender/eps.py` (episodes 4-10) build every model and
    scene from primitives in Blender (via the Blender MCP), with two-tone toon
    shaders whose colours are CPC palette colours, and render them at sprite
    size (2:1 pixels for Mode 0). Sources: `art/blender/*.blend`.
@@ -92,7 +116,11 @@ multiplier (up to x4). Coffee zaps everything on screen, a heart gives a life.
 Headless, on the floooh/chips CPC 6128 emulator in `~/cpcemu`:
 
 ```bash
-python3 tests/flow.py          # menu, 9 waves, episodes, victory, game over, hi-score
+python3 tests/flow.py          # menu, 30 waves, 10 episodes, victory, game over, hi-score
+```
+
+```bash
+python3 tests/mechanics.py     # deepfakes, Gary, splitting slop, bass drops, the boss
 ```
 
 ```bash

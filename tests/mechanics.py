@@ -20,7 +20,7 @@ def start(ep):
     g.tap(KEY_SPACE)
     g.run(60)
     g.tap(KEY_SPACE)
-    g.run(10)
+    g.run(30)               # let the bolt fired with the card fly off
     assert g.b("state") == 1 and g.b("episode") == ep, (g.b("state"), g.b("episode"))
     return g
 
@@ -95,7 +95,8 @@ g = start(9)
 g.poke("wave", 2)
 g.poke("quota_left", 1)
 put_item(g, 0)
-zap(g)
+zap(g, 2)
+g.run(16)
 check("ep10: boss fight starts", g.b("boss_on") == 1 and g.b("quota_left") == 12,
       "boss %d hp %d" % (g.b("boss_on"), g.b("quota_left")))
 for i in range(1500):
