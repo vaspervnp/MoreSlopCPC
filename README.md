@@ -7,7 +7,15 @@ melting portraits, clickbait, self-help e-books, bored apes, metaverse land and
 shitcoins. Written in Z80 assembly; graphics modelled in Blender and finished in
 Aseprite; music and effects play on the AY from the interrupt.
 
+![Menu](screenshots/menu.png)
+
+| | |
+|---|---|
+| ![Episode 1](screenshots/episode1.png) | ![Episode 3](screenshots/episode3.png) |
+
 ## Play
+
+A ready disk image is in the repo: `moreslop.dsk`. To rebuild it:
 
 ```bash
 make
