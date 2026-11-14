@@ -43,7 +43,7 @@ BOLT_SPEED  equ 9
 
 ; object limits -------------------------------------------------------------
 MAX_ITEMS   equ 8
-MAX_BOLTS   equ 2
+MAX_BOLTS   equ 3               ; 2 unless the battery is charged
 MAX_POOFS   equ 6
 MAX_BROS    equ 2
 
@@ -64,16 +64,21 @@ IT_SIZE     equ 10
 SS_PLAYER   equ 0               ; 5 frames: idle walk1 walk2 zap dizzy
 SS_ROBOT    equ 10              ; 2 frames
 SS_ITEMS    equ 14              ; 3 kinds x 2 frames
-SS_POWER    equ 26              ; coffee, heart
-SS_POOF     equ 30              ; 3 frames
-SS_BOLT     equ 36              ; 1
-SS_BRO      equ 38              ; float, walk1, walk2
-SS_DECOY    equ 44              ; 2 frames
+SS_POWER    equ 26              ; coffee, heart, then the 4 you catch
+SS_POOF     equ 38              ; 3 frames
+SS_BOLT     equ 44              ; 1
+SS_BRO      equ 46              ; float, walk1, walk2
+SS_DECOY    equ 52              ; 2 frames
 
 ; item kinds
 K_COFFEE    equ 3
 K_HEART     equ 4
 K_DECOY     equ 5
+K_CATCH     equ 6               ; from here on: caught by Themis, zaps pass through
+K_SNAIL     equ 6               ; slow motion
+K_BATTERY   equ 7               ; turbo zaps
+K_ADBLOCK   equ 8               ; the shelf bounces the next slop
+K_BROOM     equ 9               ; empties the shelf
 
 ; game states -----------------------------------------------------------------
 ST_INTRO    equ 0
@@ -130,6 +135,8 @@ SFX_POWER   equ 6
 SFX_THUD    equ 7
 SFX_POP     equ 8
 SFX_START   equ 9
+SFX_CATCH   equ 10
+SFX_FADE    equ 11
 
 ; text control codes
 TX_FG       equ 1

@@ -288,6 +288,86 @@ def render_power(mode):
         sc = B.scene("power_m%d_%d" % (mode, i), 16 if mode == 1 else 12, 16, 1.0 if mode == 1 else 2.0)
         fn(sc, mode)
         out.append(B.render(sc, "power_m%d/%d.png" % (mode, i)))
+    return out + render_catch(mode)
+
+
+# ------------------------------------------- power-ups you catch (not zap)
+# Modelled in 16x16 units for both modes. Mode 1 only has the episode's four
+# pens (1 = background, 20, 8, 26 in episode 1's colours); Mode 0 may only use
+# the pens every Mode 0 palette shares (0, 26, 3, 15, 24, 16, 18, 11, 13, 6).
+CATCH_M1 = dict(a=(20, 1), b=(8, 1), w=(26, 20), hi=(26, 26), k=(1, 1))
+CATCH_M0 = dict(snail_shell=(15, 3), snail_body=(13, 0), batt=(18, 0), cap=(13, 0), bolt=(24, 15),
+                shield=(6, 3), ring=(26, 13), stick=(15, 3), brush=(24, 15), band=(6, 3), hi=(26, 26),
+                k=(0, 0))
+
+
+def _cm(mode, role, m1role):
+    lit, sh = (CATCH_M1[m1role] if mode == 1 else CATCH_M0[role])
+    return B.toon(lit, sh)
+
+
+def snail(sc, mode):
+    """SLOW-MO: the slop goes on dial-up."""
+    body = _cm(mode, "snail_body", "a")
+    B.box(sc, 1.5, 1, 13, 2.6, body, d=3, name="foot")
+    B.ball(sc, 3.2, 5, 2.3, body, name="head")
+    for ex in (2.0, 4.6):
+        B.box(sc, ex, 6, 0.8, 4.5, body, d=1, name="stalk")
+        B.ball(sc, ex + 0.4, 10.8, 1.1, _cm(mode, "hi", "hi"), y=-0.8, name="eye")
+    shell = _cm(mode, "snail_shell", "b")
+    B.ball(sc, 9.8, 7.6, 5.0, shell, sy=0.7, name="shell")
+    # the spiral: three shrinking rings in front of the shell
+    for r, k in ((3.4, "hi"), (2.3, "snail_shell"), (1.1, "hi")):
+        B.cyl(sc, 10.2, 7.8, r, 0.6, _cm(mode, k, "hi" if k == "hi" else "b"), y=-4.2 - (3.4 - r) * 0.3,
+              name="spiral")
+
+
+def battery(sc, mode):
+    """TURBO: zaps fly twice as fast."""
+    B.box(sc, 4, 0.5, 8, 12.5, _cm(mode, "batt", "a"), d=5, name="cell")
+    B.box(sc, 6.2, 13, 3.6, 2.2, _cm(mode, "cap", "w"), d=3, name="cap")
+    if mode == 0:       # 2:1 pixels: a fatter bolt
+        B.poly(sc, [(10.5, 12), (3.5, 6.2), (7.4, 6.2), (5.5, 1.2), (12.5, 7.8), (8.6, 7.8)],
+               _cm(mode, "bolt", "b"), d=1, y=-3, name="bolt")
+        return
+    B.poly(sc, [(9.2, 11.5), (5.2, 6.4), (7.8, 6.4), (6.6, 1.8), (10.8, 7.6), (8.2, 7.6)],
+           _cm(mode, "bolt", "b" if mode == 1 else "bolt"), d=1, y=-3, name="bolt")
+
+
+def adblock(sc, mode):
+    """SHIELD: the next slop bounces off the shelf."""
+    B.poly(sc, [(1.5, 14.5), (14.5, 14.5), (14.5, 8), (8, 0.8), (1.5, 8)], _cm(mode, "shield", "b"),
+           d=3, name="shield")
+    t = 1.0 if mode == 1 else 1.6           # Mode 0 pixels are twice as wide
+    B.cyl(sc, 8, 8.8, 4.3 + 0.3 * (t - 1), 0.6, _cm(mode, "ring", "hi"), y=-1.8, name="ring")
+    B.cyl(sc, 8, 8.8, 4.3 - 1.3 * t, 0.6, _cm(mode, "shield", "b"), y=-2.2, name="hole")
+    bar = B.box(sc, 4.4, 8.8 - 0.55 * t, 7.2, 1.1 * t, _cm(mode, "ring", "hi"), d=0.6, y=-2.6, name="bar")
+    bar.rotation_euler = (0, math.radians(45), 0)
+
+
+def broom(sc, mode):
+    """CLEAN: sweeps the slop off the shelf."""
+    B.poly(sc, [(13.4, 15.5), (15, 14.4), (8.4, 6.2), (6.8, 7.3)], _cm(mode, "stick", "w"), d=1.5,
+           name="stick")
+    B.poly(sc, [(5.0, 9.2), (9.4, 5.6), (8.0, 0.4), (0.4, 0.4), (0.4, 5.0)], _cm(mode, "brush", "b"),
+           d=3, name="brush")
+    if mode == 1:       # bristles
+        for x0, x1 in ((2.2, 1.4), (4.6, 4.0), (7.0, 6.4)):
+            B.poly(sc, [(x0 + 1.2, 6.2 - (x0 - 2.2) * 0.4), (x0 + 1.9, 6.2 - (x0 - 2.2) * 0.4),
+                        (x1 + 0.7, 0.4), (x1, 0.4)], _cm(mode, "k", "k"), d=1, y=-1.8, name="bristle")
+    B.poly(sc, [(5.2, 9.6), (9.8, 5.8), (8.6, 4.6), (4.0, 8.4)], _cm(mode, "band", "a"), d=3.4,
+           name="band")
+
+
+CATCH = [snail, battery, adblock, broom]
+
+
+def render_catch(mode):
+    out = []
+    for i, fn in enumerate(CATCH):
+        sc = B.scene("power_m%d_%d" % (mode, i + 2), 16 if mode == 1 else 8, 16, 1.0 if mode == 1 else 2.0)
+        fn(sc, mode)
+        out.append(B.render(sc, "power_m%d/%d.png" % (mode, i + 2)))
     return out
 
 

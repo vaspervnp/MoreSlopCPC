@@ -12,6 +12,7 @@ from harness import KEY_SPACE, KEY_LEFT, KEY_RIGHT
 IT_SIZE, MAX_ITEMS = 10, 8
 BR_SIZE, MAX_BROS = 5, 2
 PLAYER_W = 6
+CATCH, BATTERY = 6, 7                  # item kinds from here on are caught by walking under them
 
 
 class Autopilot:
@@ -43,7 +44,7 @@ class Autopilot:
         for i in range(MAX_ITEMS):
             r = raw[i * IT_SIZE:(i + 1) * IT_SIZE]
             if r[0]:
-                out.append(dict(kind=r[0] - 1, x=r[1], y=r[3], dx=r[4] if r[4] < 128 else r[4] - 256,
+                out.append(dict(kind=r[8], x=r[1], y=r[3], dx=r[4] if r[4] < 128 else r[4] - 256,
                                 w=r[6], h=r[7]))
         return out
 
@@ -70,9 +71,25 @@ class Autopilot:
         tgt = None
         if its:
             # lowest slop first; power-ups only when nothing is close to the shelf
+            # (decoys - kind 5 - are left alone; kinds 6+ are caught, not zapped)
             slop = [i for i in its if i["kind"] < 3]
-            power = [i for i in its if i["kind"] >= 3]
+            power = [i for i in its if i["kind"] in (3, 4)]
+            catch = sorted((i for i in its if i["kind"] >= CATCH), key=lambda i: -i["y"])
+            if g.b("boss_on"):      # in the boss fight only a battery is worth the walk
+                catch = [i for i in catch if i["kind"] == BATTERY]
             pool = sorted(slop, key=lambda i: -i["y"])
+            if catch and catch[0]["y"] > 90 and (not pool or pool[0]["y"] < 150):
+                c = catch[0]
+                want = c["x"] + c["w"] // 2 - PLAYER_W // 2
+                keys = set()
+                if want < px - 1:
+                    keys.add(KEY_LEFT)
+                elif want > px + 1:
+                    keys.add(KEY_RIGHT)
+                if pool and abs(pool[0]["x"] + pool[0]["w"] // 2 - px - 3) < 3:
+                    keys.add(KEY_SPACE)     # zaps fly through it anyway
+                self._press(keys)
+                return
             if power and (not pool or pool[0]["y"] < 120):
                 pool = power + pool
             tgt = pool[0] if pool else None

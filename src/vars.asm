@@ -89,7 +89,7 @@ last_sc_80: defs 6,0
 tick_col:   db 1
 tick_len:   db 0
 num_buf:    defs 10,0
-str_buf:    defs 12,0
+str_buf:    defs 16,0
 as_op:      defs 3,0
 
 ; game
@@ -161,6 +161,11 @@ beat_timer: db 0                ; frames to the next bass drop
 drop_timer: db 0                ; frames of the bass drop left
 boss_on:    db 0                ; the SlopBot fights back
 robot_flash: db 0
+slow_t:     db 0                ; game frames of slow motion left (snail)
+turbo_t:    db 0                ; game frames of turbo zaps left (battery)
+shield_n:   db 0                ; slop the shelf still bounces (ad blocker)
+pw_show:    db 0                ; power-up shown in the HUD (kind, 0 = none)
+pw_sub:     db 0                ; counts game frames to the next HUD second
 objects_end:
 
 ; obstacles

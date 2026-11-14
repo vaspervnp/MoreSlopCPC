@@ -26,6 +26,10 @@ REV_TIME    equ 125     ; frames of reversed controls after zapping a deepfake
 BEAT_EVERY  equ 250     ; frames between bass drops
 DROP_TIME   equ 50      ; frames a bass drop lasts
 BOSS_HP     equ 12      ; zaps to bring down the SlopBot
+CATCH_ODDS  equ 16      ; in 256: a spawn is a power-up to catch
+SLOW_TIME   equ 250     ; game frames (10 s) of the snail's slow motion
+TURBO_TIME  equ 250     ; game frames of the battery's turbo zaps
+SHIELD_HITS equ 3       ; slop the ad blocker bounces off the shelf
 
 ; ----------------------------------------------------------------------------
 ; input -> inp / inp_new
@@ -498,6 +502,7 @@ do_play:
     call update_bolts
     call update_poofs
     call update_obstacles
+    call power_tick
     jp beat_step
 
 ; ---- wave cleared: card, then the next wave / episode
@@ -715,8 +720,12 @@ up_fire:
     ld a,(player_cool)
     or a
     ret nz
-    ; free bolt?
+    ; free bolt? (two of them, all three when turbo)
     ld hl,bolts
+    ld a,(turbo_t)
+    or a
+    ld b,2
+    jr z,uf_lp
     ld b,MAX_BOLTS
 uf_lp:
     inc hl
@@ -733,7 +742,12 @@ uf_free:
     ld (hl),a
     inc hl
     ld (hl),BOLT_Y
+    ld a,(turbo_t)
+    or a
+    ld a,1
+    jr nz,uf_cool
     ld a,(cool_max)
+uf_cool:
     ld (player_cool),a
     ld a,4
     ld (player_zap),a
@@ -824,7 +838,7 @@ si_next:
     ret c
     push hl
     pop ix
-    ; kind: 3 = coffee, 4 = heart, else 0-2
+    ; kind: 3 = coffee, 4 = heart, 6-9 = one to catch, else 0-2
     call rand
     cp 5
     ld c,3
@@ -832,6 +846,20 @@ si_next:
     cp 8
     ld c,4
     jr c,si_kind
+    cp 8+CATCH_ODDS
+    jr nc,si_nocatch
+    call rand
+    and 3
+    add a,K_CATCH
+    ld c,a
+    cp K_BROOM
+    jr nz,si_kind
+    ld a,(misses)
+    or a
+    jr nz,si_kind
+    ld c,K_ADBLOCK          ; nothing to sweep: a shield instead
+    jr si_kind
+si_nocatch:
     ld a,(ep_mech)
     and MC_DECOY_REV|MC_DECOY_MISS
     jr z,si_slop
@@ -885,6 +913,9 @@ item_sprite:
     ld a,(ix+IT_KIND)
     cp K_DECOY
     jr z,is_decoy
+    jr c,is_pw
+    dec a                   ; the ones to catch follow coffee and heart
+is_pw:
     cp 3
     jr c,is_slop
     sub 3
@@ -946,7 +977,15 @@ it_1:
     cp K_DECOY
     jr z,it_move
     ld hl,#00C0             ; power-ups drift down slowly
+    jr c,it_move
+    ld hl,#00E0             ; the ones to catch a little faster
 it_move:
+    ld a,(slow_t)
+    or a
+    jr z,it_mv1
+    srl h                   ; the snail: half speed
+    rr l
+it_mv1:
     ld a,(drop_timer)
     or a
     jr z,it_mv2
@@ -981,13 +1020,42 @@ it_bounce:
 it_land:
     ld a,(ix+IT_Y)
     add a,(ix+IT_H)
+    ld c,a
+    ld a,(ix+IT_KIND)
+    cp K_CATCH
+    jr c,it_shelf
+    ; one to catch: does it touch Themis?
+    ld a,c
+    cp PLAYER_Y+4
+    jr c,it_shelf
+    ld a,(player_x)
+    add a,PLAYER_W
+    ld b,a
+    ld a,(ix+IT_X)
+    cp b
+    jr nc,it_shelf          ; right of her
+    add a,(ix+IT_W)
+    ld b,a
+    ld a,(player_x)
+    cp b
+    jp c,catch_item
+it_shelf:
+    ld a,c
     cp SHELF_Y
     ret c
     ; it reached the shelf
     ld (ix+IT_ON),0
     ld a,(ix+IT_KIND)
+    cp K_CATCH
+    jr c,it_sh2
+    ld hl,msg_dropped       ; nobody caught it
+    jp show_msg
+it_sh2:
     cp 3
     ret nc                  ; power-ups and decoys just fall away
+    ld a,(shield_n)
+    or a
+    jp nz,shield_bounce
     call add_miss
     ret c                   ; that cost a life (and said so)
     ld a,EH_MISS
@@ -1077,10 +1145,16 @@ ub_lp:
     push bc
     push hl
     inc hl
+    ld a,(turbo_t)
+    or a
+    ld c,BOLT_SPEED
+    jr z,ub_0
+    ld c,BOLT_SPEED+5
+ub_0:
     ld a,(hl)
     or a
     jr z,ub_next
-    sub BOLT_SPEED
+    sub c
     cp PLAY_TOP+2
     jr nc,ub_1
     xor a
@@ -1116,6 +1190,9 @@ bh_lp:
     ld a,(ix+IT_ON)
     or a
     jr z,bh_next
+    ld a,(ix+IT_KIND)
+    cp K_CATCH
+    jr nc,bh_next           ; zaps pass through the ones to catch
     ; item.x < bx+BOLT_W
     ld a,b
     add a,BOLT_W
@@ -1274,6 +1351,148 @@ zh_1:
     call hud_mark
     ld hl,msg_heart
     jp show_msg
+
+; ----------------------------------------------------------------------------
+; power-ups you catch: Themis walks under them (zaps pass straight through)
+; ----------------------------------------------------------------------------
+; IX = the item that touched Themis
+catch_item:
+    ld (ix+IT_ON),0
+    ld b,(ix+IT_X)
+    ld c,(ix+IT_Y)
+    call add_poof
+    ld a,SFX_CATCH
+    call play_sfx
+    ld a,#25
+    call add_score
+    ld a,(ix+IT_KIND)
+    sub K_CATCH
+    add a,a
+    ld e,a
+    ld d,0
+    ld hl,catch_msgs
+    add hl,de
+    ld a,(hl)
+    inc hl
+    ld h,(hl)
+    ld l,a
+    call show_msg
+    ld a,(ix+IT_KIND)
+    cp K_SNAIL
+    jr z,ci_snail
+    cp K_BATTERY
+    jr z,ci_batt
+    cp K_ADBLOCK
+    jr z,ci_ad
+    ; the broom: every slop on the shelf swept away
+    xor a
+    ld (misses),a
+    ld a,HF_SHELF
+    jp hud_mark
+ci_snail:
+    ld a,SLOW_TIME
+    ld (slow_t),a
+    jr ci_show
+ci_batt:
+    ld a,TURBO_TIME
+    ld (turbo_t),a
+    jr ci_show
+ci_ad:
+    ld a,SHIELD_HITS
+    ld (shield_n),a
+ci_show:
+    ld a,(ix+IT_KIND)
+    ld (pw_show),a
+    ld a,25
+    ld (pw_sub),a
+    ld a,HF_POWER
+    jp hud_mark
+
+catch_msgs: dw msg_c_snail,msg_c_battery,msg_c_adblock,msg_c_broom
+
+; IX = slop that reached the shelf while the ad blocker is on
+shield_bounce:
+    ld hl,shield_n
+    dec (hl)
+    ld b,(ix+IT_X)
+    ld c,(ix+IT_Y)
+    call add_poof
+    ld a,HF_POWER
+    call hud_mark
+    ld a,(shield_n)
+    or a
+    jr z,sb_off
+    ld a,SFX_BLIP
+    call play_sfx
+    ld hl,msg_blocked
+    jp show_msg
+sb_off:
+    ld a,SFX_FADE
+    call play_sfx
+    ld hl,msg_e_adblock
+    jp show_msg
+
+; once per game frame in play: the snail and the battery run down
+power_tick:
+    ld a,(slow_t)
+    ld hl,turbo_t
+    or (hl)
+    ret z
+    ld hl,pw_sub
+    dec (hl)
+    jr nz,pt_1
+    ld (hl),25
+    ld a,HF_POWER           ; a second went by
+    call hud_mark
+pt_1:
+    ld hl,slow_t
+    ld de,msg_e_snail
+    call pt_timer
+    ld hl,turbo_t
+    ld de,msg_e_battery
+pt_timer:
+    ld a,(hl)
+    or a
+    ret z
+    dec (hl)
+    ret nz
+    ex de,hl
+    call show_msg
+    ld a,SFX_FADE
+    call play_sfx
+    ld a,HF_POWER
+    jp hud_mark
+
+; A = kind -> A = what is left of it for the HUD (seconds / shields, 0 = off)
+pw_left:
+    cp K_SNAIL
+    jr z,pl_s
+    cp K_BATTERY
+    jr z,pl_b
+    cp K_ADBLOCK
+    jr z,pl_a
+    xor a
+    ret
+pl_a:
+    ld a,(shield_n)
+    ret
+pl_s:
+    ld a,(slow_t)
+    jr pl_sec
+pl_b:
+    ld a,(turbo_t)
+pl_sec:
+    ld c,0
+    or a
+    ret z
+pl_lp:
+    inc c
+    sub 25
+    jr z,pl_d
+    jr nc,pl_lp
+pl_d:
+    ld a,c
+    ret
 
 ; ---- the zapped thing was a decoy: a deepfake of Themis or a real human
 zi_decoy:
@@ -1580,6 +1799,14 @@ dw_it:
     ld a,(ix+IT_ON)
     or a
     jr z,dw_itn
+    ld a,(ix+IT_KIND)
+    cp K_CATCH
+    jr c,dw_it1
+    ld a,(ix+IT_T)          ; the ones to catch blink
+    and 6
+    cp 6
+    jr z,dw_itn
+dw_it1:
     call item_sprite
     ld b,(ix+IT_X)
     ld c,(ix+IT_Y)
@@ -1730,6 +1957,10 @@ fs_p1:
     ld a,#4C
     jr nz,fs_s2
 fs_off:
+    ld a,(shield_n)
+    or a
+    ld a,#52                ; bright green: the ad blocker is on
+    jr nz,fs_s2
     ld a,(ep_shelf1)
 fs_s2:
     ld (de),a

@@ -10,7 +10,8 @@ HF_INFO     equ 4
 HF_SHELF    equ 8
 HF_HI       equ 16
 HF_LABELS   equ 32
-HF_ALL      equ 63
+HF_POWER    equ 64
+HF_ALL      equ 127
 
 ; A = fields to redraw (in both buffers)
 hud_mark:
@@ -52,6 +53,9 @@ hs_1:
     ld a,(hs_flags)
     bit 4,a
     call nz,hud_hi
+    ld a,(hs_flags)
+    bit 6,a
+    call nz,hud_power
 hs_ticker:
     ; two characters of the show_msg per frame
     ld a,(draw_hi)
@@ -280,6 +284,77 @@ hud_info:
     ld hl,str_buf
     ld bc,20*256+HUD_ROW_INFO
     jp text_m1
+
+; the power-up that is on (the one caught last first): "SNAIL  7"
+hud_power:
+    ld a,(pw_show)
+    call pw_left
+    or a
+    jr nz,hp_go
+    ld b,K_SNAIL
+hp_find:
+    ld a,b
+    push bc
+    call pw_left
+    pop bc
+    or a
+    jr nz,hp_found
+    inc b
+    ld a,b
+    cp K_BROOM
+    jr c,hp_find
+    xor a
+    ld (pw_show),a
+    ld hl,txt_pw_none
+    jr hp_draw
+hp_found:
+    ld c,a
+    ld a,b
+    ld (pw_show),a
+    ld a,c
+hp_go:
+    push af
+    ld hl,str_buf
+    ld (hl),TX_FG
+    inc hl
+    ld (hl),2
+    inc hl
+    ex de,hl
+    ld a,(pw_show)
+    sub K_CATCH
+    ld c,a
+    add a,a
+    add a,a
+    add a,c
+    ld c,a
+    ld b,0
+    ld hl,pw_labels
+    add hl,bc
+    ld bc,5
+    ldir
+    ex de,hl
+    ld (hl),TX_FG
+    inc hl
+    ld (hl),3
+    inc hl
+    ld (hl),' '
+    inc hl
+    pop af
+    call dec2
+    ld (hl),0
+    ld a,(str_buf+10)
+    cp '0'
+    jr nz,hp_nz
+    ld a,' '
+    ld (str_buf+10),a
+hp_nz:
+    ld hl,str_buf
+hp_draw:
+    ld bc,22*256+HUD_ROW_SCORE
+    jp text_m1
+
+pw_labels:  db "SNAIL","TURBO","ADBLK"
+txt_pw_none: db "        ",0
 
 hud_shelf:
     ; one block per allowed miss: full = used

@@ -44,12 +44,12 @@ def art(name, pal=None, fw=None, fh=None, n=None):
 SPRITES = {
     "themis_m1": (1, "ep1", 24, 24, 5),
     "robot_m1":  (1, "ep1", 32, 20, 2),
-    "power_m1":  (1, "ep1", 16, 16, 2),
+    "power_m1":  (1, "ep1", 16, 16, 6),
     "poof_m1":   (1, "ep1", 16, 16, 3),
     "bolt_m1":   (1, "ep1", 8, 10, 1),
     "themis_m0": (0, "ep3", 12, 24, 5),
     "robot_m0":  (0, "ep3", 16, 20, 2),
-    "power_m0":  (0, "ep3", 8, 16, 2),
+    "power_m0":  (0, "ep3", 8, 16, 6),
     "poof_m0":   (0, "ep3", 8, 16, 3),
     "bolt_m0":   (0, "ep3", 4, 10, 1),
 }

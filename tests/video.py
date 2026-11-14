@@ -5,7 +5,8 @@
 
 The tour: power on, the loading screen, the menu (with the episode pages),
 then the first wave of each of the ten episodes, and the fight against the
-SlopBot at the end of episode 10 followed by the victory card. Waves 2-3 are
+SlopBot at the end of episode 10 followed by the victory card (held so the
+whole thing lasts 4:00). The autopilot catches the power-ups. Waves 2-3 are
 played off camera (fast, with the quota cut short); every cut fades.
 
 The run is deterministic (fixed autopilot seed, emulated machine), so the
@@ -133,7 +134,7 @@ def render_audio(regs, gains, path):
 def main():
     dry = "--dry" in sys.argv
     play_s = float(next((a[7:] for a in sys.argv if a.startswith("--play=")), "15.4"))
-    seed = int(next((a[7:] for a in sys.argv if a.startswith("--seed=")), "3"))
+    seed = int(next((a[7:] for a in sys.argv if a.startswith("--seed=")), "6"))
     g = Game(boot=False)
     c = g.c
     r = Recorder(g, dry)
@@ -178,7 +179,7 @@ def main():
     # --- the menu: logo, the tour pages, start
     r.mark("menu")
     r.frames(110)
-    for _ in range(4):                  # off camera: on to "the tour, part 1"
+    for _ in range(5):                  # off camera: on to "the tour, part 1"
         c.key_down(ord("H"))
         c.run_frames(4)
         c.key_up(ord("H"))
@@ -203,7 +204,12 @@ def main():
         r.mark("episode %d play" % (ep + 1))
         t0 = r.t()
         card_at = None
+        shown = g.b("pw_show")
         while r.t() - t0 < play_s and st() != 4:
+            if g.b("pw_show") != shown:
+                shown = g.b("pw_show")
+                if shown:
+                    r.mark("  caught power-up %d" % shown)
             if st() == 0 and g.b("episode") == ep:       # the next wave's card
                 card_at = card_at or r.t()
                 if r.t() - card_at > 1.2:
@@ -229,7 +235,7 @@ def main():
         r.frames(2, ap.step)
     ap.release()
     r.mark("victory (state %d)" % st())
-    r.frames(385)
+    r.frames(max(250, 50 * 240 - FADE - r.n))     # hold the card to exactly 4:00
     r.cut()
     r.mark("end")
     r.close()

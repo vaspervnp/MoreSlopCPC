@@ -40,7 +40,7 @@ for _e in EPISODES:
 EH_FIELDS = ["card", "popt", "poptitle", "heads", "kill", "miss", "popin", "popdone",
              "banin", "bandone", "broin", "brohit", "broleft", "brodone", "decoy",
              "special", "boss"]
-SET_ENTRIES = 24          # sprite set: player 5, robot 2, items 6, power 2, poof 3,
+SET_ENTRIES = 28          # sprite set: player 5, robot 2, items 6, power 6, poof 3,
                           # bolt 1, bro float 1, bro walk 2, decoy 2
 
 
@@ -67,7 +67,7 @@ def build(path):
         set_refs = (["spr_themis_%s_%d" % (m, i) for i in range(5)]
                     + ["spr_robot_%s_%d" % (m, i) for i in range(2)]
                     + ["%sitems_%d" % (p, i) for i in range(6)]
-                    + ["spr_power_%s_%d" % (m, i) for i in range(2)]
+                    + ["spr_power_%s_%d" % (m, i) for i in range(6)]
                     + ["spr_poof_%s_%d" % (m, i) for i in range(3)]
                     + ["spr_bolt_%s_0" % m]
                     + (["%sbro_float_0" % p, "%sbro_walk_0" % p, "%sbro_walk_1" % p] if bro

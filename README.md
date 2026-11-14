@@ -37,7 +37,19 @@ behind the loading screen.
 | Esc | back to the menu |
 
 Three slop items on the shelf cost a life. Six zaps in a row raise the score
-multiplier (up to x4). Coffee zaps everything on screen, a heart gives a life.
+multiplier (up to x4).
+
+**Power-ups.** Zap the coffee and the heart: coffee zaps everything on screen,
+a heart gives a life. The other four blink as they fall. Zaps go straight through
+them, so Themis has to walk under them and catch them. A dropped one costs nothing,
+but it's gone. The one that is running shows next to the lives in the HUD.
+
+| | catch it and... |
+|---|---|
+| Snail | the slop is on dial-up: everything falls at half speed for 10 s |
+| Battery | turbo: three zaps in the air instead of two, faster and with no cooldown, for 10 s |
+| Ad blocker | the next 3 slop bounce off the shelf (it glows green) |
+| Broom | the shelf is swept clean |
 
 **Difficulty**
 
@@ -121,6 +133,10 @@ python3 tests/flow.py          # menu, 30 waves, 10 episodes, victory, game over
 
 ```bash
 python3 tests/mechanics.py     # deepfakes, Gary, splitting slop, bass drops, the boss
+```
+
+```bash
+python3 tests/powerups.py      # catching the snail, battery, ad blocker and broom (Mode 1 and Mode 0)
 ```
 
 ```bash

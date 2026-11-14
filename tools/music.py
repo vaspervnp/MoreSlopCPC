@@ -410,10 +410,14 @@ def sfx_defs():
     S["start"] = [(13, per(n), None) for n in ["C5", "C5", "G5", "G5", "C6", "C6", "E6", "E6",
                                                  "G6", "G6", "G6", "G6"]] + \
                  [(11 - i, per("C7"), None) for i in range(10)]
+    # caught a power-up: a quick rising "ba-ding"; a power-up runs out: it sags
+    S["catch"] = [(14, per(n), None) for n in ["G5", "G5", "D6", "D6", "G6", "G6", "B6", "B6", "D7"]] + \
+                 [(12 - i, per("G7"), None) for i in range(10)]
+    S["fade"] = [(12 - i // 2, per("E6") + i * 12, None) for i in range(16)]
     return S
 
 
-SFX_ORDER = ["zap", "boom", "sold", "popup", "blip", "power", "thud", "pop", "start"]
+SFX_ORDER = ["zap", "boom", "sold", "popup", "blip", "power", "thud", "pop", "start", "catch", "fade"]
 
 
 def sfx_asm():
