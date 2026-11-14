@@ -80,6 +80,20 @@ class Autopilot:
         if bros and (tgt is None or tgt["y"] < 110):
             b = min(bros, key=lambda b: abs(b["x"] - px))
             tgt = dict(x=b["x"], w=6, y=b["y"], dx=0, kind=9)
+        if g.b("boss_on") and (tgt is None or tgt["y"] < 145):
+            # the SlopBot moves 2 bytes a frame and a bolt needs ~10 frames
+            # to reach it: aim 20 bytes ahead (bouncing off the edges like
+            # the robot does) and keep firing
+            dx = 2 if g.b("robot_dx") < 128 else -2
+            x = g.b("robot_x") + dx * 10
+            x = -x if x < 0 else (144 - x if x > 72 else x)
+            keys = {KEY_SPACE}
+            if x + 1 < px:
+                keys.add(KEY_LEFT)
+            elif x > px:
+                keys.add(KEY_RIGHT)
+            self._press(keys)
+            return
         if tgt is None:
             self._press(set())
             return

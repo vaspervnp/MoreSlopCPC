@@ -132,5 +132,5 @@ python3 tests/record_music.py  # AY register log -> build/music/*.wav
 ```
 
 ```bash
-python3 tests/video.py         # 4-minute gameplay video (autopilot) -> build/video/moreslop.mp4
+python3 tests/video.py         # 4-minute tour of all ten episodes (autopilot) -> build/video/moreslop.mp4
 ```
