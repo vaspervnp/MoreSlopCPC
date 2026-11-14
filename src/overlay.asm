@@ -23,9 +23,15 @@ ov_open:
     inc hl
     cp #FF
     jr z,oo_explicit
-    ; centred: A = width in columns
-    ld (ov_wcols),a
+    ; centred: A = width in columns (Mode 0 cards use all 20)
     ld b,a
+    ld a,(cur_mode)
+    or a
+    jr nz,oo_m1
+    ld b,20
+oo_m1:
+    ld a,b
+    ld (ov_wcols),a
     ld a,(cur_mode)
     or a
     ld a,20

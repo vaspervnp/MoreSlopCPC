@@ -58,6 +58,6 @@
 - [x] **Milestone 3: Εφαρμογή των 3 Σεναρίων** *(sprites & σκηνικά: Blender → Aseprite)*
   * Προγραμματισμός των διαφορετικών palettes (Mode 1, Amber, Mode 0).
   * Ενσωμάτωση των ειδικών εμποδίων (pop-ups, banners, crypto-bros).
-- [ ] **Milestone 4: Δοκιμές & CPC ROM Export**
+- [x] **Milestone 4: Δοκιμές & CPC ROM Export** *(build/moreslop.dsk, headless tests στο tests/)*
   * Beta testing σε διάφορους browsers και συσκευές.
   * Τελική βελτιστοποίηση κώδικα για μέγιστη πιστότητα στην εμπειρία του Amstrad CPC 6128.
